@@ -1,15 +1,13 @@
 import React from 'react';
 import Navbar from './components/layout/Navbar';
+import Hero from './components/home/Hero';
 
 function App() {
   return (
-    <div className="min-h-screen bg-shop-bg">
+    <div className="min-h-screen bg-[#FAF8F4] text-[#222222] font-sans antialiased flex flex-col">
       <Navbar />
-
-      <main className="mx-auto max-w-7xl px-6 py-16">
-        <h1 className="text-3xl font-semibold text-shop-text">
-          ShopKart
-        </h1>
+      <main className="flex-1">
+        <Hero />
       </main>
     </div>
   );
