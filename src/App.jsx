@@ -1,6 +1,7 @@
 import React from 'react';
 import Navbar from './components/layout/Navbar';
 import Hero from './components/home/Hero';
+import CategorySection from './components/home/CategorySection';
 
 function App() {
   return (
@@ -8,6 +9,7 @@ function App() {
       <Navbar />
       <main className="flex-1">
         <Hero />
+        <CategorySection />
       </main>
     </div>
   );
