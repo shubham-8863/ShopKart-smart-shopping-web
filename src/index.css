@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* ShopKart Dark Editorial Palette */
+  --color-shop-dark: #101313;
+  --color-shop-surface: #151919;
+  --color-shop-surface-alt: #1a2020;
+  --color-shop-text: #E8EEF0;
+  --color-shop-muted: #9BA7AA;
+  --color-shop-border: rgba(232, 238, 240, 0.10);
+  --color-shop-btn: #303536;
+  --color-shop-btn-hover: #3d4344;
+  --color-shop-bg: #101313;
+
+  /* Border Radii */
+  --radius-shop-card: 16px;
+  --radius-shop-btn: 10px;
+  --radius-shop-input: 10px;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-shop-bg);
+    color: var(--color-shop-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
