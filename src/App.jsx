@@ -2,6 +2,7 @@ import React from 'react';
 import Navbar from './components/layout/Navbar';
 import Hero from './components/home/Hero';
 import CategorySection from './components/home/CategorySection';
+import FeaturedProducts from './components/home/FeaturedProducts';
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
       <main className="flex-1">
         <Hero />
         <CategorySection />
+        <FeaturedProducts />
       </main>
     </div>
   );
