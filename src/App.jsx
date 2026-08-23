@@ -7,6 +7,8 @@ import Products from './pages/Products';
 import ProductDetails from './pages/ProductDetails';
 import Compare from './pages/Compare';
 import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
+import OrderSuccess from './pages/OrderSuccess';
 
 // Helper to parse hash route information
 function getRouteInfo() {
@@ -24,6 +26,12 @@ function getRouteInfo() {
   if (hash === '#cart') {
     return { name: 'cart', productId: null };
   }
+  if (hash === '#checkout') {
+    return { name: 'checkout', productId: null };
+  }
+  if (hash === '#order-success') {
+    return { name: 'order-success', productId: null };
+  }
   return { name: 'home', productId: null };
 }
 
@@ -36,6 +44,9 @@ function App() {
 
   // Cart items state [{ productId: 1, quantity: 1 }]
   const [cartItems, setCartItems] = useState([]);
+
+  // Prototype placed order state for OrderSuccess screen
+  const [lastOrder, setLastOrder] = useState(null);
 
   // Toast feedback notification state
   const [toastMessage, setToastMessage] = useState(null);
@@ -120,6 +131,13 @@ function App() {
     setToastMessage('Removed from cart.');
   };
 
+  // Order placement handler
+  const handlePlaceOrder = (orderDetails) => {
+    setLastOrder(orderDetails);
+    setCartItems([]);
+    setToastMessage('Order placed successfully.');
+  };
+
   // Compute total quantity of items in cart for the Navbar badge
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -160,6 +178,13 @@ function App() {
             onUpdateQuantity={handleUpdateCartQuantity}
             onRemoveItem={handleRemoveFromCart}
           />
+        ) : routeInfo.name === 'checkout' ? (
+          <Checkout
+            cartItems={cartItems}
+            onPlaceOrder={handlePlaceOrder}
+          />
+        ) : routeInfo.name === 'order-success' ? (
+          <OrderSuccess lastOrder={lastOrder} />
         ) : (
           <>
             <Hero />

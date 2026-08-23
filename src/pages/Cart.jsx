@@ -1,41 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ShoppingBag, ArrowRight, Minus, Plus, Trash2, ArrowLeft, ShieldCheck, Truck } from 'lucide-react';
 import products from '../data/products';
-
-// Helper to format currency
-function formatPrice(amount) {
-  return typeof amount === 'number'
-    ? new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0,
-      }).format(amount)
-    : amount;
-}
+import { formatPrice, calculateOrderTotals } from '../utils/pricing';
 
 export default function Cart({ cartItems = [], onUpdateQuantity, onRemoveItem }) {
-  const [checkoutNotice, setCheckoutNotice] = useState(false);
-
-  // Resolve cart item references against the mock dataset
-  const resolvedItems = cartItems
-    .map((item) => ({
-      ...item,
-      product: products.find((p) => p.id === Number(item.productId)),
-    }))
-    .filter((item) => Boolean(item.product));
-
-  // Compute Subtotal, Delivery Cost, and Final Total
-  const subtotal = resolvedItems.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
-    0
+  // Compute Subtotal, Delivery Cost, and Final Total using shared utility
+  const { resolvedItems, subtotal, isFreeDelivery, deliveryCost, total } = calculateOrderTotals(
+    cartItems,
+    products
   );
-  const isFreeDelivery = subtotal >= 2000;
-  const deliveryCost = isFreeDelivery ? 0 : 99;
-  const total = subtotal + (resolvedItems.length > 0 ? deliveryCost : 0);
 
   const handleProceedToCheckout = () => {
-    setCheckoutNotice(true);
-    setTimeout(() => setCheckoutNotice(false), 3500);
+    window.location.hash = '#checkout';
   };
 
   // Empty Cart State
@@ -83,22 +59,6 @@ export default function Cart({ cartItems = [], onUpdateQuantity, onRemoveItem })
             Review your selections before moving on to checkout.
           </p>
         </div>
-
-        {/* Temporary Checkout Step Notice */}
-        {checkoutNotice && (
-          <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-center justify-between gap-4 text-left">
-            <span>
-              ℹ️ Checkout will be implemented in the next step. Your cart selections are ready!
-            </span>
-            <button
-              type="button"
-              onClick={() => setCheckoutNotice(false)}
-              className="text-amber-800 font-bold hover:text-amber-950 text-xs uppercase"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
 
         {/* Two-Column Cart Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
