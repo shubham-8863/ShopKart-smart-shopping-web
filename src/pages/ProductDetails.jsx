@@ -13,15 +13,17 @@ import {
 import ProductCard from '../components/product/ProductCard';
 import products from '../data/products';
 
-export default function ProductDetails({ productId }) {
-  // Temporary UI action feedback states (pure frontend, ready for future API calls)
+export default function ProductDetails({ productId, compareIds = [], onToggleCompare }) {
+  // Temporary UI action feedback states
   const [isAddedToCart, setIsAddedToCart] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isComparing, setIsComparing] = useState(false);
   const [isTracked, setIsTracked] = useState(false);
 
   // Find the selected product from data by numeric ID
   const product = products.find((p) => p.id === Number(productId));
+
+  // Determine if this product is currently selected for comparison
+  const isComparing = product ? compareIds.includes(product.id) : false;
 
   // Handle Invalid Product ID State
   if (!product) {
@@ -72,10 +74,6 @@ export default function ProductDetails({ productId }) {
 
   const handleToggleWishlist = () => {
     setIsWishlisted((prev) => !prev);
-  };
-
-  const handleToggleCompare = () => {
-    setIsComparing((prev) => !prev);
   };
 
   const handleToggleTrackPrice = () => {
@@ -204,7 +202,7 @@ export default function ProductDetails({ productId }) {
               {/* Secondary: Compare Button */}
               <button
                 type="button"
-                onClick={handleToggleCompare}
+                onClick={() => onToggleCompare && onToggleCompare(product.id)}
                 className={`h-12 px-5 rounded-xl border text-sm font-medium flex items-center gap-2 transition duration-150 active:scale-[0.98] shadow-2xs ${
                   isComparing
                     ? 'border-[#D86F5C] bg-[#FAF8F4] text-[#D86F5C]'
@@ -212,7 +210,7 @@ export default function ProductDetails({ productId }) {
                 }`}
               >
                 <Scale className="w-4 h-4" />
-                <span>{isComparing ? 'Comparing' : '+ Compare'}</span>
+                <span>{isComparing ? 'In Comparison' : '+ Compare'}</span>
               </button>
             </div>
 

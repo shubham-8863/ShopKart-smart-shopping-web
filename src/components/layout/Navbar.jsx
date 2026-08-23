@@ -1,7 +1,7 @@
 import React from 'react';
 import { Heart, ShoppingBag, User, Search, Menu } from 'lucide-react';
 
-export default function Navbar() {
+export default function Navbar({ compareCount = 0 }) {
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F4]/85 backdrop-blur-md transition-colors border-b border-black/[0.04]">
       <nav
@@ -31,9 +31,14 @@ export default function Navbar() {
           </a>
           <a
             href="#compare"
-            className="text-[15px] font-medium text-[#444444] hover:text-[#D86F5C] transition-colors duration-150"
+            className="text-[15px] font-medium text-[#444444] hover:text-[#D86F5C] transition-colors duration-150 inline-flex items-center gap-1.5"
           >
-            Compare
+            <span>Compare</span>
+            {compareCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-[#D86F5C] text-white text-[10px] font-bold flex items-center justify-center">
+                {compareCount}
+              </span>
+            )}
           </a>
         </div>
 
