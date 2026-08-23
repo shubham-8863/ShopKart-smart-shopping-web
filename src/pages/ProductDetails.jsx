@@ -13,7 +13,12 @@ import {
 import ProductCard from '../components/product/ProductCard';
 import products from '../data/products';
 
-export default function ProductDetails({ productId, compareIds = [], onToggleCompare }) {
+export default function ProductDetails({
+  productId,
+  compareIds = [],
+  onToggleCompare,
+  onAddToCart,
+}) {
   // Temporary UI action feedback states
   const [isAddedToCart, setIsAddedToCart] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -69,6 +74,9 @@ export default function ProductDetails({ productId, compareIds = [], onToggleCom
   // Temporary UI interaction handlers
   const handleAddToCart = () => {
     setIsAddedToCart(true);
+    if (onAddToCart) {
+      onAddToCart(product.id);
+    }
     setTimeout(() => setIsAddedToCart(false), 2200);
   };
 

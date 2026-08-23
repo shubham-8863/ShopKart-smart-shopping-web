@@ -1,7 +1,7 @@
 import React from 'react';
 import { Heart, ShoppingBag, User, Search, Menu } from 'lucide-react';
 
-export default function Navbar({ compareCount = 0 }) {
+export default function Navbar({ compareCount = 0, cartCount = 0 }) {
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F4]/85 backdrop-blur-md transition-colors border-b border-black/[0.04]">
       <nav
@@ -62,14 +62,19 @@ export default function Navbar({ compareCount = 0 }) {
             <Search className="w-5 h-5" />
           </button>
 
-          {/* Shopping Cart Button */}
-          <button
-            type="button"
+          {/* Shopping Cart Link / Button */}
+          <a
+            href="#cart"
             aria-label="Shopping cart"
-            className="p-2.5 rounded-full text-[#444444] hover:text-[#D86F5C] hover:bg-black/[0.04] transition duration-150 active:scale-95"
+            className="relative p-2.5 rounded-full text-[#444444] hover:text-[#D86F5C] hover:bg-black/[0.04] transition duration-150 active:scale-95 flex items-center justify-center"
           >
             <ShoppingBag className="w-5 h-5" />
-          </button>
+            {cartCount > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#D86F5C] text-white text-[10px] font-bold flex items-center justify-center shadow-xs">
+                {cartCount}
+              </span>
+            )}
+          </a>
 
           {/* Account Button */}
           <button

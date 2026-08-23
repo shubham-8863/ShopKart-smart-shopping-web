@@ -6,6 +6,7 @@ import FeaturedProducts from './components/home/FeaturedProducts';
 import Products from './pages/Products';
 import ProductDetails from './pages/ProductDetails';
 import Compare from './pages/Compare';
+import Cart from './pages/Cart';
 
 // Helper to parse hash route information
 function getRouteInfo() {
@@ -20,6 +21,9 @@ function getRouteInfo() {
   if (hash === '#compare') {
     return { name: 'compare', productId: null };
   }
+  if (hash === '#cart') {
+    return { name: 'cart', productId: null };
+  }
   return { name: 'home', productId: null };
 }
 
@@ -30,14 +34,17 @@ function App() {
   // Comparison list state (holds up to 3 product IDs)
   const [compareIds, setCompareIds] = useState([]);
 
-  // Toast feedback state
+  // Cart items state [{ productId: 1, quantity: 1 }]
+  const [cartItems, setCartItems] = useState([]);
+
+  // Toast feedback notification state
   const [toastMessage, setToastMessage] = useState(null);
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
     if (!toastMessage) return;
     const timer = setTimeout(() => {
-      setToastMessage(null), 3000;
+      setToastMessage(null);
     }, 3000);
     return () => clearTimeout(timer);
   }, [toastMessage]);
@@ -80,9 +87,48 @@ function App() {
     setToastMessage('Comparison cleared.');
   };
 
+  // Cart management handlers
+  const handleAddToCart = (productId) => {
+    const numericId = Number(productId);
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.productId === numericId);
+      if (existing) {
+        return prev.map((item) =>
+          item.productId === numericId
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prev, { productId: numericId, quantity: 1 }];
+    });
+    setToastMessage('Added to cart.');
+  };
+
+  const handleUpdateCartQuantity = (productId, newQuantity) => {
+    const numericId = Number(productId);
+    if (newQuantity < 1) return;
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.productId === numericId ? { ...item, quantity: newQuantity } : item
+      )
+    );
+  };
+
+  const handleRemoveFromCart = (productId) => {
+    const numericId = Number(productId);
+    setCartItems((prev) => prev.filter((item) => item.productId !== numericId));
+    setToastMessage('Removed from cart.');
+  };
+
+  // Compute total quantity of items in cart for the Navbar badge
+  const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-[#222222] font-sans antialiased flex flex-col relative">
-      <Navbar compareCount={compareIds.length} />
+      <Navbar
+        compareCount={compareIds.length}
+        cartCount={totalCartCount}
+      />
 
       {/* Floating Toast Notification */}
       {toastMessage && (
@@ -98,6 +144,7 @@ function App() {
             productId={routeInfo.productId}
             compareIds={compareIds}
             onToggleCompare={handleToggleCompare}
+            onAddToCart={handleAddToCart}
           />
         ) : routeInfo.name === 'products' ? (
           <Products />
@@ -106,6 +153,12 @@ function App() {
             compareIds={compareIds}
             onRemove={handleRemoveCompare}
             onClear={handleClearCompare}
+          />
+        ) : routeInfo.name === 'cart' ? (
+          <Cart
+            cartItems={cartItems}
+            onUpdateQuantity={handleUpdateCartQuantity}
+            onRemoveItem={handleRemoveFromCart}
           />
         ) : (
           <>
