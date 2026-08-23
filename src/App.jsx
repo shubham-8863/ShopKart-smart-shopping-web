@@ -4,21 +4,29 @@ import Hero from './components/home/Hero';
 import CategorySection from './components/home/CategorySection';
 import FeaturedProducts from './components/home/FeaturedProducts';
 import Products from './pages/Products';
+import ProductDetails from './pages/ProductDetails';
+
+// Helper to parse hash route information
+function getRouteInfo() {
+  const hash = window.location.hash;
+  if (hash.startsWith('#product/')) {
+    const id = hash.replace('#product/', '');
+    return { name: 'product-details', productId: id };
+  }
+  if (hash === '#products') {
+    return { name: 'products', productId: null };
+  }
+  return { name: 'home', productId: null };
+}
 
 function App() {
-  // Simple hash-based route state (ready to be replaced by full router later)
-  const [currentRoute, setCurrentRoute] = useState(
-    window.location.hash === '#products' ? 'products' : 'home'
-  );
+  // Hash-based route state (seamlessly upgradable to full client router later)
+  const [routeInfo, setRouteInfo] = useState(getRouteInfo());
 
   useEffect(() => {
     const handleHashChange = () => {
-      if (window.location.hash === '#products') {
-        setCurrentRoute('products');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        setCurrentRoute('home');
-      }
+      setRouteInfo(getRouteInfo());
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -29,7 +37,9 @@ function App() {
     <div className="min-h-screen bg-[#FAF8F4] text-[#222222] font-sans antialiased flex flex-col">
       <Navbar />
       <main className="flex-1">
-        {currentRoute === 'products' ? (
+        {routeInfo.name === 'product-details' ? (
+          <ProductDetails productId={routeInfo.productId} />
+        ) : routeInfo.name === 'products' ? (
           <Products />
         ) : (
           <>

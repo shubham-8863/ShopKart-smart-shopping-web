@@ -13,8 +13,15 @@ export default function ProductCard({ product }) {
         }).format(product.price)
       : product.price;
 
+  const handleCardClick = () => {
+    window.location.hash = `#product/${product.id}`;
+  };
+
   return (
-    <article className="bg-white rounded-2xl border border-black/5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col h-full overflow-hidden group cursor-pointer">
+    <article
+      onClick={handleCardClick}
+      className="bg-white rounded-2xl border border-black/5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col h-full overflow-hidden group cursor-pointer"
+    >
       {/* Product Image Area */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-50">
         <img
