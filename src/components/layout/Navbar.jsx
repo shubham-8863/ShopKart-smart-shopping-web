@@ -98,19 +98,14 @@ export default function Navbar({
             )}
           </a>
 
-          {/* Orders / Account Button */}
+          {/* Account Button */}
           <a
-            href="#orders"
-            aria-label="My Orders"
+            href="#account"
+            aria-label="Account"
             className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-black/10 bg-white hover:bg-stone-50 text-[#222222] text-sm font-medium transition duration-150 shadow-xs active:scale-95"
           >
-            <Package className="w-4 h-4 text-[#6B6B6B]" />
-            <span>Orders</span>
-            {orderCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-stone-200 text-[#222222] text-[10px] font-bold flex items-center justify-center">
-                {orderCount}
-              </span>
-            )}
+            <User className="w-4 h-4 text-[#6B6B6B]" />
+            <span>Account</span>
           </a>
 
           {/* Mobile Menu Button */}

@@ -13,6 +13,7 @@ import Wishlist from './pages/Wishlist';
 import PriceAlerts from './pages/PriceAlerts';
 import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
+import Account from './pages/Account';
 
 // Helper to parse hash route information
 function getRouteInfo() {
@@ -48,6 +49,9 @@ function getRouteInfo() {
   }
   if (hash === '#orders') {
     return { name: 'orders', productId: null };
+  }
+  if (hash === '#account') {
+    return { name: 'account', productId: null };
   }
   return { name: 'home', productId: null };
 }
@@ -302,6 +306,13 @@ function App() {
           <Orders orders={orders} />
         ) : routeInfo.name === 'order-details' ? (
           <OrderDetails orderId={routeInfo.orderId} orders={orders} />
+        ) : routeInfo.name === 'account' ? (
+          <Account
+            orders={orders}
+            wishlistIds={wishlistIds}
+            priceAlerts={priceAlerts}
+            onShowToast={setToastMessage}
+          />
         ) : (
           <>
             <Hero />
