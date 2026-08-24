@@ -8,9 +8,8 @@ import {
   ArrowRight, 
   Edit2, 
   Check, 
-  ShoppingBag,
-  Mail,
-  Phone
+  Mail, 
+  Phone 
 } from 'lucide-react';
 
 export default function Account({
@@ -75,8 +74,8 @@ export default function Account({
     <div className="bg-[#FAF8F4] py-10 sm:py-16">
       <div className="max-w-5xl mx-auto px-6 sm:px-8 lg:px-10">
         
-        {/* Page Header */}
-        <div className="mb-8 sm:mb-10 text-left">
+        {/* 1. Account Header */}
+        <div className="mb-10 sm:mb-12 text-left">
           <p className="text-xs sm:text-[13px] font-medium tracking-[0.15em] uppercase text-[#D86F5C] mb-3">
             Your Account
           </p>
@@ -88,44 +87,7 @@ export default function Account({
           </p>
         </div>
 
-        {/* Prominent Order History Discoverability Action Card */}
-        <section className="mb-10 text-left">
-          <div className="bg-white rounded-2xl border border-black/5 p-6 sm:p-7 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-5 hover:shadow-md transition">
-            <div className="flex items-start sm:items-center gap-4 min-w-0">
-              <div className="w-12 h-12 rounded-xl bg-stone-50 border border-black/5 flex items-center justify-center text-[#D86F5C] shrink-0">
-                <Package className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-[11px] font-medium tracking-[0.15em] uppercase text-[#D86F5C] mb-0.5">
-                  Order History
-                </p>
-                <div className="flex items-center gap-3">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-[#222222]">
-                    Your orders
-                  </h2>
-                  <span className="text-xs font-semibold text-[#6B6B6B] bg-stone-100 px-2.5 py-0.5 rounded-full">
-                    {orders.length} {orders.length === 1 ? 'order' : 'orders'}
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1">
-                  Review your previous purchases and order details.
-                </p>
-              </div>
-            </div>
-
-            <div className="shrink-0">
-              <a
-                href="#orders"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-xs sm:text-sm font-medium transition duration-150 active:scale-95 shadow-xs"
-              >
-                <span>View my orders</span>
-                <ArrowRight className="w-4 h-4 text-[#D86F5C]" />
-              </a>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 1: Shopping Activity Overview */}
+        {/* 2. Shopping Activity Section */}
         <section className="mb-12 text-left">
           <h2 className="text-lg font-semibold text-[#222222] mb-5">
             Your ShopKart activity
@@ -220,8 +182,8 @@ export default function Account({
           </div>
         </section>
 
-        {/* Section 2: Profile & Delivery Details (2-Column Grid on Desktop) */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left mb-12">
+        {/* 3 & 4. Profile & Delivery Details (2-Column Grid on Desktop) */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
           
           {/* Profile Information Card */}
           <div className="bg-white rounded-2xl border border-black/5 p-6 sm:p-7 shadow-xs flex flex-col justify-between">
@@ -470,47 +432,6 @@ export default function Account({
             </p>
           </div>
 
-        </section>
-
-        {/* Section 3: Quick Actions */}
-        <section className="bg-white rounded-2xl border border-black/5 p-6 sm:p-7 shadow-xs text-left">
-          <h2 className="text-base font-semibold text-[#222222] mb-4 pb-3 border-b border-black/[0.06]">
-            Quick actions
-          </h2>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <a
-              href="#orders"
-              className="p-3.5 rounded-xl border border-black/5 hover:border-[#D86F5C] hover:bg-[#FAF8F4] text-center transition group flex flex-col items-center justify-center gap-2"
-            >
-              <Package className="w-4 h-4 text-[#6B6B6B] group-hover:text-[#D86F5C] transition-colors" />
-              <span className="text-xs font-medium text-[#222222]">View Orders</span>
-            </a>
-
-            <a
-              href="#wishlist"
-              className="p-3.5 rounded-xl border border-black/5 hover:border-[#D86F5C] hover:bg-[#FAF8F4] text-center transition group flex flex-col items-center justify-center gap-2"
-            >
-              <Heart className="w-4 h-4 text-[#6B6B6B] group-hover:text-[#D86F5C] transition-colors" />
-              <span className="text-xs font-medium text-[#222222]">Wishlist</span>
-            </a>
-
-            <a
-              href="#price-alerts"
-              className="p-3.5 rounded-xl border border-black/5 hover:border-[#D86F5C] hover:bg-[#FAF8F4] text-center transition group flex flex-col items-center justify-center gap-2"
-            >
-              <Bell className="w-4 h-4 text-[#6B6B6B] group-hover:text-[#D86F5C] transition-colors" />
-              <span className="text-xs font-medium text-[#222222]">Price Alerts</span>
-            </a>
-
-            <a
-              href="#products"
-              className="p-3.5 rounded-xl border border-black/5 hover:border-[#D86F5C] hover:bg-[#FAF8F4] text-center transition group flex flex-col items-center justify-center gap-2"
-            >
-              <ShoppingBag className="w-4 h-4 text-[#6B6B6B] group-hover:text-[#D86F5C] transition-colors" />
-              <span className="text-xs font-medium text-[#222222]">Continue Shopping</span>
-            </a>
-          </div>
         </section>
 
       </div>
