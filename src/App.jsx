@@ -12,7 +12,7 @@ import OrderSuccess from './pages/OrderSuccess';
 import Wishlist from './pages/Wishlist';
 import PriceAlerts from './pages/PriceAlerts';
 import Orders from './pages/Orders';
-import { Package, ArrowLeft } from 'lucide-react';
+import OrderDetails from './pages/OrderDetails';
 
 // Helper to parse hash route information
 function getRouteInfo() {
@@ -217,6 +217,7 @@ function App() {
       status: 'Placed',
       subtotal: orderDetails.subtotal,
       deliveryCost: orderDetails.deliveryCost,
+      delivery: orderDetails.deliveryCost,
       total: orderDetails.total,
       itemCount: orderDetails.itemCount,
     };
@@ -300,27 +301,7 @@ function App() {
         ) : routeInfo.name === 'orders' ? (
           <Orders orders={orders} />
         ) : routeInfo.name === 'order-details' ? (
-          /* Graceful temporary fallback for #order/:id prior to Step 13B */
-          <div className="bg-[#FAF8F4] py-20 min-h-[60vh] flex items-center justify-center text-center">
-            <div className="max-w-md mx-auto px-6">
-              <div className="w-14 h-14 rounded-full bg-white border border-black/10 flex items-center justify-center mx-auto mb-4 text-[#D86F5C] shadow-xs">
-                <Package className="w-6 h-6" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-semibold text-[#222222]">
-                Order #{routeInfo.orderId}
-              </h1>
-              <p className="text-sm text-[#6B6B6B] mt-2">
-                Detailed invoice and tracking view will be available in Step 13B.
-              </p>
-              <a
-                href="#orders"
-                className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium transition active:scale-95 shadow-xs"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back to My Orders</span>
-              </a>
-            </div>
-          </div>
+          <OrderDetails orderId={routeInfo.orderId} orders={orders} />
         ) : (
           <>
             <Hero />
