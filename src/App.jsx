@@ -9,6 +9,7 @@ import Compare from './pages/Compare';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
+import Wishlist from './pages/Wishlist';
 
 // Helper to parse hash route information
 function getRouteInfo() {
@@ -32,6 +33,9 @@ function getRouteInfo() {
   if (hash === '#order-success') {
     return { name: 'order-success', productId: null };
   }
+  if (hash === '#wishlist') {
+    return { name: 'wishlist', productId: null };
+  }
   return { name: 'home', productId: null };
 }
 
@@ -44,6 +48,9 @@ function App() {
 
   // Cart items state [{ productId: 1, quantity: 1 }]
   const [cartItems, setCartItems] = useState([]);
+
+  // Wishlist product IDs state [1, 5, 8]
+  const [wishlistIds, setWishlistIds] = useState([]);
 
   // Prototype placed order state for OrderSuccess screen
   const [lastOrder, setLastOrder] = useState(null);
@@ -98,6 +105,20 @@ function App() {
     setToastMessage('Comparison cleared.');
   };
 
+  // Wishlist toggle handler
+  const handleToggleWishlist = (productId) => {
+    const numericId = Number(productId);
+    setWishlistIds((prev) => {
+      if (prev.includes(numericId)) {
+        setToastMessage('Removed from wishlist.');
+        return prev.filter((id) => id !== numericId);
+      } else {
+        setToastMessage('Added to wishlist.');
+        return [...prev, numericId];
+      }
+    });
+  };
+
   // Cart management handlers
   const handleAddToCart = (productId) => {
     const numericId = Number(productId);
@@ -146,6 +167,7 @@ function App() {
       <Navbar
         compareCount={compareIds.length}
         cartCount={totalCartCount}
+        wishlistCount={wishlistIds.length}
       />
 
       {/* Floating Toast Notification */}
@@ -163,9 +185,14 @@ function App() {
             compareIds={compareIds}
             onToggleCompare={handleToggleCompare}
             onAddToCart={handleAddToCart}
+            wishlistIds={wishlistIds}
+            onToggleWishlist={handleToggleWishlist}
           />
         ) : routeInfo.name === 'products' ? (
-          <Products />
+          <Products
+            wishlistIds={wishlistIds}
+            onToggleWishlist={handleToggleWishlist}
+          />
         ) : routeInfo.name === 'compare' ? (
           <Compare
             compareIds={compareIds}
@@ -185,11 +212,19 @@ function App() {
           />
         ) : routeInfo.name === 'order-success' ? (
           <OrderSuccess lastOrder={lastOrder} />
+        ) : routeInfo.name === 'wishlist' ? (
+          <Wishlist
+            wishlistIds={wishlistIds}
+            onToggleWishlist={handleToggleWishlist}
+          />
         ) : (
           <>
             <Hero />
             <CategorySection />
-            <FeaturedProducts />
+            <FeaturedProducts
+              wishlistIds={wishlistIds}
+              onToggleWishlist={handleToggleWishlist}
+            />
           </>
         )}
       </main>

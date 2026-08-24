@@ -1,7 +1,11 @@
 import React from 'react';
 import { Heart, Star } from 'lucide-react';
 
-export default function ProductCard({ product }) {
+export default function ProductCard({
+  product,
+  isWishlisted = false,
+  onToggleWishlist,
+}) {
   if (!product) return null;
 
   const formattedPrice =
@@ -34,13 +38,24 @@ export default function ProductCard({ product }) {
         {/* Wishlist Button */}
         <button
           type="button"
-          aria-label="Add to wishlist"
+          aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           onClick={(e) => {
             e.stopPropagation();
+            if (onToggleWishlist) {
+              onToggleWishlist(product.id);
+            }
           }}
-          className="absolute top-3.5 right-3.5 w-9 h-9 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-[#222222] hover:text-[#D86F5C] hover:bg-white shadow-xs transition duration-200 active:scale-95"
+          className={`absolute top-3.5 right-3.5 w-9 h-9 rounded-full flex items-center justify-center shadow-xs transition duration-200 active:scale-95 ${
+            isWishlisted
+              ? 'bg-white text-[#D86F5C] border border-[#D86F5C]/30 shadow-xs'
+              : 'bg-white/90 backdrop-blur-xs text-[#222222] hover:text-[#D86F5C] hover:bg-white'
+          }`}
         >
-          <Heart className="w-4 h-4 transition-colors" />
+          <Heart
+            className={`w-4 h-4 transition-colors ${
+              isWishlisted ? 'fill-[#D86F5C] text-[#D86F5C]' : ''
+            }`}
+          />
         </button>
       </div>
 

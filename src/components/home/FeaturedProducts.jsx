@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import ProductCard from '../product/ProductCard';
 import products from '../../data/products';
 
-export default function FeaturedProducts() {
+export default function FeaturedProducts({ wishlistIds = [], onToggleWishlist }) {
   // Slices first 4 curated items (ready for future GET /api/products/featured endpoint)
   const featuredProducts = products.slice(0, 4);
 
@@ -40,7 +40,12 @@ export default function FeaturedProducts() {
         {/* 4-Column Responsive Product Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              isWishlisted={wishlistIds.includes(product.id)}
+              onToggleWishlist={onToggleWishlist}
+            />
           ))}
         </div>
 

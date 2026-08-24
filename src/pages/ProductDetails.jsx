@@ -18,17 +18,19 @@ export default function ProductDetails({
   compareIds = [],
   onToggleCompare,
   onAddToCart,
+  wishlistIds = [],
+  onToggleWishlist,
 }) {
   // Temporary UI action feedback states
   const [isAddedToCart, setIsAddedToCart] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [isTracked, setIsTracked] = useState(false);
 
   // Find the selected product from data by numeric ID
   const product = products.find((p) => p.id === Number(productId));
 
-  // Determine if this product is currently selected for comparison
+  // Determine if this product is currently selected for comparison / wishlist
   const isComparing = product ? compareIds.includes(product.id) : false;
+  const isWishlisted = product ? wishlistIds.includes(product.id) : false;
 
   // Handle Invalid Product ID State
   if (!product) {
@@ -71,17 +73,13 @@ export default function ProductDetails({
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 3);
 
-  // Temporary UI interaction handlers
+  // Action handlers
   const handleAddToCart = () => {
     setIsAddedToCart(true);
     if (onAddToCart) {
       onAddToCart(product.id);
     }
     setTimeout(() => setIsAddedToCart(false), 2200);
-  };
-
-  const handleToggleWishlist = () => {
-    setIsWishlisted((prev) => !prev);
   };
 
   const handleToggleTrackPrice = () => {
@@ -194,17 +192,18 @@ export default function ProductDetails({
               {/* Secondary: Wishlist Button */}
               <button
                 type="button"
-                aria-label="Add to wishlist"
-                onClick={handleToggleWishlist}
-                className={`h-12 w-12 rounded-xl border flex items-center justify-center transition duration-150 active:scale-[0.98] shadow-2xs ${
+                aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                onClick={() => onToggleWishlist && onToggleWishlist(product.id)}
+                className={`h-12 px-5 rounded-xl border flex items-center gap-2 transition duration-150 active:scale-[0.98] shadow-2xs text-sm font-medium ${
                   isWishlisted
                     ? 'border-[#D86F5C] bg-[#FAF8F4] text-[#D86F5C]'
                     : 'border-black/10 bg-white hover:border-[#D86F5C] text-[#222222] hover:text-[#D86F5C]'
                 }`}
               >
                 <Heart
-                  className={`w-5 h-5 ${isWishlisted ? 'fill-[#D86F5C]' : ''}`}
+                  className={`w-4 h-4 ${isWishlisted ? 'fill-[#D86F5C] text-[#D86F5C]' : ''}`}
                 />
+                <span>{isWishlisted ? 'In Wishlist' : 'Add to Wishlist'}</span>
               </button>
 
               {/* Secondary: Compare Button */}
@@ -322,7 +321,12 @@ export default function ProductDetails({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {relatedProducts.map((relProduct) => (
-                <ProductCard key={relProduct.id} product={relProduct} />
+                <ProductCard
+                  key={relProduct.id}
+                  product={relProduct}
+                  isWishlisted={wishlistIds.includes(relProduct.id)}
+                  onToggleWishlist={onToggleWishlist}
+                />
               ))}
             </div>
           </section>

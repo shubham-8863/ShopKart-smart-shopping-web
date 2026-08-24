@@ -25,7 +25,7 @@ const SORT_OPTIONS = [
   { label: 'Rating: High to Low', value: 'rating_desc' },
 ];
 
-export default function Products() {
+export default function Products({ wishlistIds = [], onToggleWishlist }) {
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -350,7 +350,12 @@ export default function Products() {
             {filteredProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    isWishlisted={wishlistIds.includes(product.id)}
+                    onToggleWishlist={onToggleWishlist}
+                  />
                 ))}
               </div>
             ) : (
