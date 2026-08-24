@@ -10,6 +10,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
 import Wishlist from './pages/Wishlist';
+import PriceAlerts from './pages/PriceAlerts';
 
 // Helper to parse hash route information
 function getRouteInfo() {
@@ -36,6 +37,9 @@ function getRouteInfo() {
   if (hash === '#wishlist') {
     return { name: 'wishlist', productId: null };
   }
+  if (hash === '#price-alerts') {
+    return { name: 'price-alerts', productId: null };
+  }
   return { name: 'home', productId: null };
 }
 
@@ -51,6 +55,9 @@ function App() {
 
   // Wishlist product IDs state [1, 5, 8]
   const [wishlistIds, setWishlistIds] = useState([]);
+
+  // Price tracking alerts state [{ productId: 1, targetPrice: 27000, isActive: true }]
+  const [priceAlerts, setPriceAlerts] = useState([]);
 
   // Prototype placed order state for OrderSuccess screen
   const [lastOrder, setLastOrder] = useState(null);
@@ -119,6 +126,35 @@ function App() {
     });
   };
 
+  // Price Alert handlers
+  const handleSetPriceAlert = (productId, targetPrice) => {
+    const numericId = Number(productId);
+    const numericTarget = Number(targetPrice);
+    setPriceAlerts((prev) => {
+      const existing = prev.find((a) => a.productId === numericId);
+      if (existing) {
+        setToastMessage('Price alert updated.');
+        return prev.map((a) =>
+          a.productId === numericId
+            ? { ...a, targetPrice: numericTarget, isActive: true }
+            : a
+        );
+      } else {
+        setToastMessage('Price alert set.');
+        return [
+          ...prev,
+          { productId: numericId, targetPrice: numericTarget, isActive: true },
+        ];
+      }
+    });
+  };
+
+  const handleRemovePriceAlert = (productId) => {
+    const numericId = Number(productId);
+    setPriceAlerts((prev) => prev.filter((a) => a.productId !== numericId));
+    setToastMessage('Price tracking stopped.');
+  };
+
   // Cart management handlers
   const handleAddToCart = (productId) => {
     const numericId = Number(productId);
@@ -159,8 +195,9 @@ function App() {
     setToastMessage('Order placed successfully.');
   };
 
-  // Compute total quantity of items in cart for the Navbar badge
+  // Compute active counts for Navbar badges
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const activeAlertCount = priceAlerts.filter((a) => a.isActive).length;
 
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-[#222222] font-sans antialiased flex flex-col relative">
@@ -168,6 +205,7 @@ function App() {
         compareCount={compareIds.length}
         cartCount={totalCartCount}
         wishlistCount={wishlistIds.length}
+        priceAlertCount={activeAlertCount}
       />
 
       {/* Floating Toast Notification */}
@@ -187,6 +225,9 @@ function App() {
             onAddToCart={handleAddToCart}
             wishlistIds={wishlistIds}
             onToggleWishlist={handleToggleWishlist}
+            priceAlerts={priceAlerts}
+            onSetPriceAlert={handleSetPriceAlert}
+            onRemovePriceAlert={handleRemovePriceAlert}
           />
         ) : routeInfo.name === 'products' ? (
           <Products
@@ -216,6 +257,12 @@ function App() {
           <Wishlist
             wishlistIds={wishlistIds}
             onToggleWishlist={handleToggleWishlist}
+          />
+        ) : routeInfo.name === 'price-alerts' ? (
+          <PriceAlerts
+            priceAlerts={priceAlerts}
+            onSetPriceAlert={handleSetPriceAlert}
+            onRemovePriceAlert={handleRemovePriceAlert}
           />
         ) : (
           <>

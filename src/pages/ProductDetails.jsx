@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Heart, 
   Star, 
@@ -7,11 +7,15 @@ import {
   Bell, 
   ArrowLeft, 
   Check, 
-  ChevronRight,
-  TrendingDown
+  ChevronRight, 
+  TrendingDown,
+  Edit2,
+  BellOff,
+  CheckCircle2
 } from 'lucide-react';
 import ProductCard from '../components/product/ProductCard';
 import products from '../data/products';
+import { formatPrice } from '../utils/pricing';
 
 export default function ProductDetails({
   productId,
@@ -20,17 +24,39 @@ export default function ProductDetails({
   onAddToCart,
   wishlistIds = [],
   onToggleWishlist,
+  priceAlerts = [],
+  onSetPriceAlert,
+  onRemovePriceAlert,
 }) {
   // Temporary UI action feedback states
   const [isAddedToCart, setIsAddedToCart] = useState(false);
-  const [isTracked, setIsTracked] = useState(false);
+
+  // Price tracking inline edit state
+  const [isEditingAlert, setIsEditingAlert] = useState(false);
+  const [targetPriceInput, setTargetPriceInput] = useState('');
+  const [alertError, setAlertError] = useState('');
 
   // Find the selected product from data by numeric ID
   const product = products.find((p) => p.id === Number(productId));
 
-  // Determine if this product is currently selected for comparison / wishlist
+  // Determine if this product is currently selected for comparison / wishlist / price alert
   const isComparing = product ? compareIds.includes(product.id) : false;
   const isWishlisted = product ? wishlistIds.includes(product.id) : false;
+  const currentAlert = product
+    ? priceAlerts.find((a) => a.productId === product.id && a.isActive)
+    : null;
+
+  // Sync target price input when opening edit or when alert changes
+  useEffect(() => {
+    if (currentAlert) {
+      setTargetPriceInput(currentAlert.targetPrice.toString());
+    } else if (product) {
+      // Default suggested target (e.g. 10% below current price)
+      const suggested = Math.round(product.price * 0.9);
+      setTargetPriceInput(suggested.toString());
+    }
+    setAlertError('');
+  }, [currentAlert, product, isEditingAlert]);
 
   // Handle Invalid Product ID State
   if (!product) {
@@ -58,16 +84,6 @@ export default function ProductDetails({
     );
   }
 
-  // Format INR Currency
-  const formattedPrice =
-    typeof product.price === 'number'
-      ? new Intl.NumberFormat('en-IN', {
-          style: 'currency',
-          currency: 'INR',
-          maximumFractionDigits: 0,
-        }).format(product.price)
-      : product.price;
-
   // Filter Related Products (same category, excluding current product, max 3)
   const relatedProducts = products
     .filter((p) => p.category === product.category && p.id !== product.id)
@@ -82,8 +98,25 @@ export default function ProductDetails({
     setTimeout(() => setIsAddedToCart(false), 2200);
   };
 
-  const handleToggleTrackPrice = () => {
-    setIsTracked((prev) => !prev);
+  const handleSavePriceAlert = (e) => {
+    e.preventDefault();
+    const target = Number(targetPriceInput);
+
+    if (!targetPriceInput.trim() || isNaN(target) || target <= 0) {
+      setAlertError('Please enter a valid numeric target price.');
+      return;
+    }
+
+    if (target >= product.price) {
+      setAlertError('Choose a target price below the current price.');
+      return;
+    }
+
+    if (onSetPriceAlert) {
+      onSetPriceAlert(product.id, target);
+    }
+    setIsEditingAlert(false);
+    setAlertError('');
   };
 
   return (
@@ -152,7 +185,7 @@ export default function ProductDetails({
             <div className="py-4 border-y border-black/[0.06] mb-8">
               <div className="flex items-baseline gap-3">
                 <span className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-[#222222]">
-                  {formattedPrice}
+                  {formatPrice(product.price)}
                 </span>
 
                 {product.priceStatus && (
@@ -245,11 +278,11 @@ export default function ProductDetails({
                   Current Price Position
                 </p>
                 <div className="text-2xl font-semibold text-[#222222] mt-2">
-                  {formattedPrice}
+                  {formatPrice(product.price)}
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-black/[0.05] flex items-center justify-between">
-                <span className="text-xs sm:text-sm text-[#6B6B6B]">Price Status</span>
+                <span className="text-xs sm:text-sm text-[#6B6B6B]">Market Standing</span>
                 <span className="text-xs sm:text-sm font-medium text-emerald-600 flex items-center gap-1">
                   <TrendingDown className="w-3.5 h-3.5" />
                   {product.priceStatus || 'Current market price'}
@@ -257,33 +290,143 @@ export default function ProductDetails({
               </div>
             </div>
 
-            {/* Price Tracker Card (Future PriceAlert Intent) */}
+            {/* Price Tracker Card */}
             <div className="bg-white rounded-2xl border border-black/5 p-6 shadow-xs flex flex-col justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-[#222222] flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-[#D86F5C]" />
-                  Want to pay less?
-                </h3>
-                <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1.5 leading-relaxed">
-                  Set a target price and we'll let you know when this product reaches it.
-                </p>
-              </div>
+              
+              {/* If user is setting / editing target price */}
+              {isEditingAlert ? (
+                <form onSubmit={handleSavePriceAlert} className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-base font-semibold text-[#222222] flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-[#D86F5C]" />
+                        Set Target Price
+                      </h3>
+                      <span className="text-xs text-[#6B6B6B]">
+                        Current: <strong>{formatPrice(product.price)}</strong>
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                      We'll track this product and let you know when it reaches your target.
+                    </p>
+                  </div>
 
-              <div className="mt-5 pt-4 border-t border-black/[0.05] flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={handleToggleTrackPrice}
-                  className={`px-4 py-2 rounded-full text-xs font-medium inline-flex items-center gap-1.5 transition duration-150 active:scale-95 ${
-                    isTracked
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-[#222222] hover:bg-[#333333] text-white'
-                  }`}
-                >
-                  <Bell className="w-3.5 h-3.5" />
-                  <span>{isTracked ? 'Price Alert Active' : 'Track this price'}</span>
-                </button>
-                <span className="text-[11px] text-[#6B6B6B]">Free price alerts</span>
-              </div>
+                  <div>
+                    <label htmlFor="targetPriceInput" className="block text-[11px] font-medium uppercase tracking-wider text-[#6B6B6B] mb-1">
+                      Target Price (₹)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[#6B6B6B]">
+                        ₹
+                      </span>
+                      <input
+                        type="number"
+                        id="targetPriceInput"
+                        value={targetPriceInput}
+                        onChange={(e) => {
+                          setTargetPriceInput(e.target.value);
+                          if (alertError) setAlertError('');
+                        }}
+                        placeholder="Enter target price"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-black/10 text-sm text-[#222222] focus:outline-none focus:border-[#D86F5C] bg-[#FAF8F4]/60"
+                      />
+                    </div>
+                    {alertError && (
+                      <p className="text-xs text-rose-600 mt-1">{alertError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2.5 pt-1">
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-xl bg-[#222222] hover:bg-[#333333] text-white text-xs font-medium transition duration-150 active:scale-95 shadow-xs"
+                    >
+                      {currentAlert ? 'Update Alert' : 'Set Price Alert'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingAlert(false);
+                        setAlertError('');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-[#222222] text-xs font-medium transition duration-150"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : currentAlert ? (
+                /* Active Alert Display */
+                <div className="flex flex-col justify-between h-full">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        Tracking Active
+                      </span>
+                      <span className="text-xs text-[#6B6B6B]">
+                        Current: <strong>{formatPrice(product.price)}</strong>
+                      </span>
+                    </div>
+
+                    <div className="mt-3">
+                      <p className="text-xs text-[#6B6B6B] uppercase tracking-wider">Your Target Price</p>
+                      <p className="text-2xl font-semibold text-[#222222] mt-0.5">
+                        {formatPrice(currentAlert.targetPrice)}
+                      </p>
+                      <p className="text-xs text-emerald-600 font-medium mt-1">
+                        Target is {formatPrice(product.price - currentAlert.targetPrice)} below current price
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-4 border-t border-black/[0.05] flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingAlert(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-[#222222] hover:text-[#D86F5C] transition"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit target</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onRemovePriceAlert && onRemovePriceAlert(product.id)}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-[#6B6B6B] hover:text-rose-600 transition"
+                    >
+                      <BellOff className="w-3.5 h-3.5" />
+                      <span>Stop tracking</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Inactive / Default Track CTA */
+                <div className="flex flex-col justify-between h-full">
+                  <div>
+                    <h3 className="text-base font-semibold text-[#222222] flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-[#D86F5C]" />
+                      Want to pay less?
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#6B6B6B] mt-1.5 leading-relaxed">
+                      Set a target price and we'll let you know when this product reaches it.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-4 border-t border-black/[0.05] flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingAlert(true)}
+                      className="px-4 py-2 rounded-full text-xs font-medium inline-flex items-center gap-1.5 bg-[#222222] hover:bg-[#333333] text-white transition duration-150 active:scale-95 shadow-xs"
+                    >
+                      <Bell className="w-3.5 h-3.5" />
+                      <span>Track this price</span>
+                    </button>
+                    <span className="text-[11px] text-[#6B6B6B]">Free price alerts</span>
+                  </div>
+                </div>
+              )}
+
             </div>
 
           </div>

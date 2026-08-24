@@ -1,7 +1,12 @@
 import React from 'react';
-import { Heart, ShoppingBag, User, Search, Menu } from 'lucide-react';
+import { Heart, ShoppingBag, User, Search, Menu, Bell } from 'lucide-react';
 
-export default function Navbar({ compareCount = 0, cartCount = 0, wishlistCount = 0 }) {
+export default function Navbar({
+  compareCount = 0,
+  cartCount = 0,
+  wishlistCount = 0,
+  priceAlertCount = 0,
+}) {
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F4]/85 backdrop-blur-md transition-colors border-b border-black/[0.04]">
       <nav
@@ -22,7 +27,7 @@ export default function Navbar({ compareCount = 0, cartCount = 0, wishlistCount 
         </div>
 
         {/* Center: Navigation Links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-7 lg:gap-8">
           <a
             href="#products"
             className="text-[15px] font-medium text-[#444444] hover:text-[#D86F5C] transition-colors duration-150"
@@ -37,6 +42,17 @@ export default function Navbar({ compareCount = 0, cartCount = 0, wishlistCount 
             {compareCount > 0 && (
               <span className="w-4 h-4 rounded-full bg-[#D86F5C] text-white text-[10px] font-bold flex items-center justify-center">
                 {compareCount}
+              </span>
+            )}
+          </a>
+          <a
+            href="#price-alerts"
+            className="text-[15px] font-medium text-[#444444] hover:text-[#D86F5C] transition-colors duration-150 inline-flex items-center gap-1.5"
+          >
+            <span>Price Alerts</span>
+            {priceAlertCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-[#D86F5C] text-white text-[10px] font-bold flex items-center justify-center">
+                {priceAlertCount}
               </span>
             )}
           </a>
