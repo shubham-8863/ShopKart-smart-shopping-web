@@ -1,11 +1,12 @@
 import React from 'react';
-import { Heart, ShoppingBag, User, Search, Menu, Bell } from 'lucide-react';
+import { Heart, ShoppingBag, User, Search, Menu, Package } from 'lucide-react';
 
 export default function Navbar({
   compareCount = 0,
   cartCount = 0,
   wishlistCount = 0,
   priceAlertCount = 0,
+  orderCount = 0,
 }) {
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F4]/85 backdrop-blur-md transition-colors border-b border-black/[0.04]">
@@ -97,15 +98,20 @@ export default function Navbar({
             )}
           </a>
 
-          {/* Account Button */}
-          <button
-            type="button"
-            aria-label="Account"
+          {/* Orders / Account Button */}
+          <a
+            href="#orders"
+            aria-label="My Orders"
             className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-black/10 bg-white hover:bg-stone-50 text-[#222222] text-sm font-medium transition duration-150 shadow-xs active:scale-95"
           >
-            <User className="w-4 h-4 text-[#6B6B6B]" />
-            <span>Account</span>
-          </button>
+            <Package className="w-4 h-4 text-[#6B6B6B]" />
+            <span>Orders</span>
+            {orderCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-stone-200 text-[#222222] text-[10px] font-bold flex items-center justify-center">
+                {orderCount}
+              </span>
+            )}
+          </a>
 
           {/* Mobile Menu Button */}
           <button

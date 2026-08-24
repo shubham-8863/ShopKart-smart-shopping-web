@@ -11,6 +11,8 @@ import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
 import Wishlist from './pages/Wishlist';
 import PriceAlerts from './pages/PriceAlerts';
+import Orders from './pages/Orders';
+import { Package, ArrowLeft } from 'lucide-react';
 
 // Helper to parse hash route information
 function getRouteInfo() {
@@ -18,6 +20,10 @@ function getRouteInfo() {
   if (hash.startsWith('#product/')) {
     const id = hash.replace('#product/', '');
     return { name: 'product-details', productId: id };
+  }
+  if (hash.startsWith('#order/')) {
+    const id = hash.replace('#order/', '');
+    return { name: 'order-details', orderId: id };
   }
   if (hash === '#products') {
     return { name: 'products', productId: null };
@@ -40,6 +46,9 @@ function getRouteInfo() {
   if (hash === '#price-alerts') {
     return { name: 'price-alerts', productId: null };
   }
+  if (hash === '#orders') {
+    return { name: 'orders', productId: null };
+  }
   return { name: 'home', productId: null };
 }
 
@@ -59,7 +68,10 @@ function App() {
   // Price tracking alerts state [{ productId: 1, targetPrice: 27000, isActive: true }]
   const [priceAlerts, setPriceAlerts] = useState([]);
 
-  // Prototype placed order state for OrderSuccess screen
+  // Normalized order history collection
+  const [orders, setOrders] = useState([]);
+
+  // Latest placed order record for OrderSuccess screen
   const [lastOrder, setLastOrder] = useState(null);
 
   // Toast feedback notification state
@@ -188,9 +200,29 @@ function App() {
     setToastMessage('Removed from cart.');
   };
 
-  // Order placement handler
+  // Order placement handler: Creates persistent order record and clears cart
   const handlePlaceOrder = (orderDetails) => {
-    setLastOrder(orderDetails);
+    const orderId = `SK${1001 + orders.length}`;
+    const newOrder = {
+      id: orderId,
+      createdAt: new Date().toISOString(),
+      items: orderDetails.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.product?.price || 0,
+      })),
+      customer: orderDetails.customer,
+      shippingAddress: orderDetails.shippingAddress,
+      paymentMethod: orderDetails.paymentMethod,
+      status: 'Placed',
+      subtotal: orderDetails.subtotal,
+      deliveryCost: orderDetails.deliveryCost,
+      total: orderDetails.total,
+      itemCount: orderDetails.itemCount,
+    };
+
+    setOrders((prev) => [newOrder, ...prev]);
+    setLastOrder(newOrder);
     setCartItems([]);
     setToastMessage('Order placed successfully.');
   };
@@ -206,6 +238,7 @@ function App() {
         cartCount={totalCartCount}
         wishlistCount={wishlistIds.length}
         priceAlertCount={activeAlertCount}
+        orderCount={orders.length}
       />
 
       {/* Floating Toast Notification */}
@@ -264,6 +297,30 @@ function App() {
             onSetPriceAlert={handleSetPriceAlert}
             onRemovePriceAlert={handleRemovePriceAlert}
           />
+        ) : routeInfo.name === 'orders' ? (
+          <Orders orders={orders} />
+        ) : routeInfo.name === 'order-details' ? (
+          /* Graceful temporary fallback for #order/:id prior to Step 13B */
+          <div className="bg-[#FAF8F4] py-20 min-h-[60vh] flex items-center justify-center text-center">
+            <div className="max-w-md mx-auto px-6">
+              <div className="w-14 h-14 rounded-full bg-white border border-black/10 flex items-center justify-center mx-auto mb-4 text-[#D86F5C] shadow-xs">
+                <Package className="w-6 h-6" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-semibold text-[#222222]">
+                Order #{routeInfo.orderId}
+              </h1>
+              <p className="text-sm text-[#6B6B6B] mt-2">
+                Detailed invoice and tracking view will be available in Step 13B.
+              </p>
+              <a
+                href="#orders"
+                className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium transition active:scale-95 shadow-xs"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to My Orders</span>
+              </a>
+            </div>
+          </div>
         ) : (
           <>
             <Hero />
