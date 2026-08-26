@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { testConnection } from './config/db.js';
+import productRoutes from './routes/productRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -26,6 +27,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// API Routes
+app.use('/api', productRoutes);
+
 // 404 Fallback
 app.use((req, res) => {
   res.status(404).json({
@@ -43,14 +47,20 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start Server
-app.listen(PORT, async () => {
-  console.log(`========================================`);
-  console.log(` ShopKart Express API running on port ${PORT}`);
-  console.log(` Base URL: http://localhost:${PORT}`);
-  console.log(` Health check: http://localhost:${PORT}/api/health`);
-  console.log(`========================================`);
-  await testConnection();
-});
+// Start Server if executed directly
+const isDirectRun =
+  process.argv[1] &&
+  (process.argv[1].endsWith('server.js') || process.argv[1].endsWith('server'));
+
+if (isDirectRun) {
+  app.listen(PORT, async () => {
+    console.log(`========================================`);
+    console.log(` ShopKart Express API running on port ${PORT}`);
+    console.log(` Base URL: http://localhost:${PORT}`);
+    console.log(` Health check: http://localhost:${PORT}/api/health`);
+    console.log(`========================================`);
+    await testConnection();
+  });
+}
 
 export default app;
