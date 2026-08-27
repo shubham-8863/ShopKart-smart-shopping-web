@@ -1,7 +1,15 @@
-import React, { useState, useMemo } from 'react';
-import { Search, SlidersHorizontal, RotateCcw, X, Star } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Search, 
+  SlidersHorizontal, 
+  RotateCcw, 
+  X, 
+  Star, 
+  AlertCircle, 
+  RefreshCw 
+} from 'lucide-react';
 import ProductCard from '../components/product/ProductCard';
-import products from '../data/products';
+import { getProducts } from '../services/api';
 
 const CATEGORIES = [
   'All Categories',
@@ -26,7 +34,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function Products({ wishlistIds = [], onToggleWishlist }) {
-  // Search & Filter State
+  // Search & Filter UI State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [minPrice, setMinPrice] = useState('');
@@ -34,6 +42,12 @@ export default function Products({ wishlistIds = [], onToggleWishlist }) {
   const [minRating, setMinRating] = useState('all');
   const [sortBy, setSortBy] = useState('recommended');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Backend API State
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   // Check if any filter or search query is currently active
   const hasActiveFilters =
@@ -54,55 +68,62 @@ export default function Products({ wishlistIds = [], onToggleWishlist }) {
     setSortBy('recommended');
   };
 
-  // Memoized product filtering and sorting (simulates future GET /api/products query params)
-  const filteredProducts = useMemo(() => {
-    let result = products.filter((product) => {
-      // 1. Search Query Filter (name, description, category)
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
-        const matchesName = product.name.toLowerCase().includes(query);
-        const matchesDesc = product.description.toLowerCase().includes(query);
-        const matchesCat = product.category.toLowerCase().includes(query);
-        if (!matchesName && !matchesDesc && !matchesCat) return false;
-      }
+  // Fetch products from the REST API when query or filters change
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
 
-      // 2. Category Filter
-      if (selectedCategory !== 'All Categories' && product.category !== selectedCategory) {
-        return false;
-      }
+    setLoading(true);
+    setError(null);
 
-      // 3. Price Filter (minPrice)
-      if (minPrice !== '' && !isNaN(Number(minPrice)) && product.price < Number(minPrice)) {
-        return false;
-      }
+    // Debounce search typing by 250ms; other filters execute immediately
+    const delay = searchQuery.trim() ? 250 : 0;
+    const timeoutId = setTimeout(() => {
+      getProducts(
+        {
+          search: searchQuery,
+          category: selectedCategory,
+          minPrice,
+          maxPrice,
+          minRating,
+          sortBy,
+        },
+        controller.signal
+      )
+        .then((data) => {
+          if (isMounted) {
+            setProducts(data);
+            setLoading(false);
+            setError(null);
+          }
+        })
+        .catch((err) => {
+          if (err.name === 'AbortError') return;
+          if (isMounted) {
+            console.error('Error fetching products from API:', err);
+            setError(err.message || 'Unable to load products.');
+            setLoading(false);
+          }
+        });
+    }, delay);
 
-      // 4. Price Filter (maxPrice)
-      if (maxPrice !== '' && !isNaN(Number(maxPrice)) && product.price > Number(maxPrice)) {
-        return false;
-      }
+    return () => {
+      isMounted = false;
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [
+    searchQuery,
+    selectedCategory,
+    minPrice,
+    maxPrice,
+    minRating,
+    sortBy,
+    retryKey,
+  ]);
 
-      // 5. Minimum Rating Filter
-      if (minRating !== 'all' && product.rating < Number(minRating)) {
-        return false;
-      }
-
-      return true;
-    });
-
-    // Sort operations
-    if (sortBy === 'price_asc') {
-      result = [...result].sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price_desc') {
-      result = [...result].sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'rating_desc') {
-      result = [...result].sort((a, b) => b.rating - a.rating);
-    }
-
-    return result;
-  }, [searchQuery, selectedCategory, minPrice, maxPrice, minRating, sortBy]);
-
-  const productCountText = `${filteredProducts.length} ${
-    filteredProducts.length === 1 ? 'product' : 'products'
+  const productCountText = `${products.length} ${
+    products.length === 1 ? 'product' : 'products'
   }`;
 
   return (
@@ -161,7 +182,7 @@ export default function Products({ wishlistIds = [], onToggleWishlist }) {
           </button>
 
           <span className="text-sm text-[#6B6B6B] font-medium">
-            {productCountText}
+            {!loading && productCountText}
           </span>
         </div>
 
@@ -307,16 +328,16 @@ export default function Products({ wishlistIds = [], onToggleWishlist }) {
             </div>
           </aside>
 
-          {/* Right Column: Results & 3-Column Product Grid (75% / 9 cols on desktop) */}
+          {/* Right Column: Results & Product Grid (75% / 9 cols on desktop) */}
           <section className="lg:col-span-9 flex flex-col">
             
             {/* Results Header: Count & Sorting */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-black/[0.04]">
               <div className="text-left">
                 <span className="text-base font-semibold text-[#222222]">
-                  {productCountText}
+                  {loading ? 'Searching products...' : productCountText}
                 </span>
-                {selectedCategory !== 'All Categories' && (
+                {!loading && selectedCategory !== 'All Categories' && (
                   <span className="text-xs text-[#6B6B6B] ml-2">
                     in <strong className="text-[#222222]">{selectedCategory}</strong>
                   </span>
@@ -346,10 +367,54 @@ export default function Products({ wishlistIds = [], onToggleWishlist }) {
               </div>
             </div>
 
-            {/* Product Grid or No-Results State */}
-            {filteredProducts.length > 0 ? (
+            {/* Error State */}
+            {error && (
+              <div className="bg-white rounded-2xl border border-rose-200/80 p-8 sm:p-12 text-center my-4 shadow-xs">
+                <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200/50 flex items-center justify-center mx-auto mb-4 text-rose-600">
+                  <AlertCircle className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-semibold text-[#222222]">
+                  Unable to load products.
+                </h3>
+                <p className="text-sm text-[#6B6B6B] mt-2 max-w-md mx-auto">
+                  {error}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setRetryKey((k) => k + 1)}
+                  className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-xs sm:text-sm font-medium transition duration-150 active:scale-95 shadow-xs"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Retry</span>
+                </button>
+              </div>
+            )}
+
+            {/* Loading State Skeleton */}
+            {loading && !error && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map((product) => (
+                {[1, 2, 3, 4, 5, 6].map((idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-2xl border border-black/5 p-4 flex flex-col justify-between animate-pulse"
+                  >
+                    <div className="aspect-[4/3] bg-stone-100 rounded-xl mb-4" />
+                    <div className="h-4 bg-stone-100 rounded w-1/3 mb-2" />
+                    <div className="h-5 bg-stone-100 rounded w-3/4 mb-3" />
+                    <div className="h-4 bg-stone-100 rounded w-full mb-4" />
+                    <div className="flex items-center justify-between pt-3 border-t border-black/[0.04]">
+                      <div className="h-5 bg-stone-100 rounded w-1/3" />
+                      <div className="h-4 bg-stone-100 rounded w-1/4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Product Grid (Loaded successfully) */}
+            {!loading && !error && products.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -358,9 +423,11 @@ export default function Products({ wishlistIds = [], onToggleWishlist }) {
                   />
                 ))}
               </div>
-            ) : (
-              /* Editorial No-Results State */
-              <div className="bg-white rounded-2xl border border-black/5 p-12 sm:p-16 text-center my-4">
+            )}
+
+            {/* Empty Results State */}
+            {!loading && !error && products.length === 0 && (
+              <div className="bg-white rounded-2xl border border-black/5 p-12 sm:p-16 text-center my-4 shadow-xs">
                 <div className="w-12 h-12 rounded-full bg-[#FAF8F4] flex items-center justify-center mx-auto mb-4 text-[#6B6B6B]">
                   <Search className="w-5 h-5" />
                 </div>
@@ -373,7 +440,7 @@ export default function Products({ wishlistIds = [], onToggleWishlist }) {
                 <button
                   type="button"
                   onClick={handleClearFilters}
-                  className="mt-6 px-5 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-xs sm:text-sm font-medium transition duration-150 active:scale-95"
+                  className="mt-6 px-5 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-xs sm:text-sm font-medium transition duration-150 active:scale-95 shadow-xs"
                 >
                   Clear All Filters
                 </button>

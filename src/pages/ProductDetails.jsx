@@ -11,10 +11,12 @@ import {
   TrendingDown,
   Edit2,
   BellOff,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import ProductCard from '../components/product/ProductCard';
-import products from '../data/products';
+import { getProductById, getProducts } from '../services/api';
 import { formatPrice } from '../utils/pricing';
 
 export default function ProductDetails({
@@ -28,6 +30,14 @@ export default function ProductDetails({
   onSetPriceAlert,
   onRemovePriceAlert,
 }) {
+  // Product API State
+  const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [is404, setIs404] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+
   // Temporary UI action feedback states
   const [isAddedToCart, setIsAddedToCart] = useState(false);
 
@@ -36,8 +46,57 @@ export default function ProductDetails({
   const [targetPriceInput, setTargetPriceInput] = useState('');
   const [alertError, setAlertError] = useState('');
 
-  // Find the selected product from data by numeric ID
-  const product = products.find((p) => p.id === Number(productId));
+  // Fetch product details from REST API
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    setLoading(true);
+    setError(null);
+    setIs404(false);
+
+    getProductById(productId, controller.signal)
+      .then((data) => {
+        if (isMounted) {
+          setProduct(data);
+          setLoading(false);
+          setError(null);
+
+          // Fetch related products in same category (Option B)
+          if (data && data.category) {
+            getProducts({ category: data.category }, controller.signal)
+              .then((catProducts) => {
+                if (isMounted) {
+                  const filtered = catProducts
+                    .filter((p) => p.id !== data.id)
+                    .slice(0, 3);
+                  setRelatedProducts(filtered);
+                }
+              })
+              .catch(() => {
+                // Non-critical: ignore related products errors
+              });
+          }
+        }
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') return;
+        if (isMounted) {
+          console.error('Error loading product details:', err);
+          setLoading(false);
+          if (err.status === 404) {
+            setIs404(true);
+          } else {
+            setError(err.message || 'Unable to load product details.');
+          }
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [productId, retryKey]);
 
   // Determine if this product is currently selected for comparison / wishlist / price alert
   const isComparing = product ? compareIds.includes(product.id) : false;
@@ -46,7 +105,7 @@ export default function ProductDetails({
     ? priceAlerts.find((a) => a.productId === product.id && a.isActive)
     : null;
 
-  // Sync target price input when opening edit or when alert changes
+  // Sync target price input when opening edit or when alert/product changes
   useEffect(() => {
     if (currentAlert) {
       setTargetPriceInput(currentAlert.targetPrice.toString());
@@ -58,39 +117,9 @@ export default function ProductDetails({
     setAlertError('');
   }, [currentAlert, product, isEditingAlert]);
 
-  // Handle Invalid Product ID State
-  if (!product) {
-    return (
-      <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[60vh] flex items-center justify-center">
-        <div className="max-w-md mx-auto px-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-white border border-black/10 flex items-center justify-center mx-auto mb-4 text-[#6B6B6B]">
-            <ArrowLeft className="w-5 h-5" />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[#222222]">
-            Product not found.
-          </h1>
-          <p className="text-sm text-[#6B6B6B] mt-2">
-            We couldn't find the product you're looking for. It may have been moved or removed.
-          </p>
-          <a
-            href="#products"
-            className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium transition duration-150 active:scale-95"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Products</span>
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  // Filter Related Products (same category, excluding current product, max 3)
-  const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 3);
-
-  // Action handlers
+  // Handle Add to Cart action
   const handleAddToCart = () => {
+    if (!product) return;
     setIsAddedToCart(true);
     if (onAddToCart) {
       onAddToCart(product.id);
@@ -98,8 +127,10 @@ export default function ProductDetails({
     setTimeout(() => setIsAddedToCart(false), 2200);
   };
 
+  // Handle Price Alert submission
   const handleSavePriceAlert = (e) => {
     e.preventDefault();
+    if (!product) return;
     const target = Number(targetPriceInput);
 
     if (!targetPriceInput.trim() || isNaN(target) || target <= 0) {
@@ -118,6 +149,89 @@ export default function ProductDetails({
     setIsEditingAlert(false);
     setAlertError('');
   };
+
+  // Loading State Skeleton
+  if (loading) {
+    return (
+      <div className="bg-[#FAF8F4] py-10 sm:py-16 min-h-[70vh]">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+          <div className="h-4 bg-stone-200/70 rounded w-48 mb-8 animate-pulse" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+            <div className="lg:col-span-6 xl:col-span-5 aspect-square bg-stone-200/60 rounded-3xl animate-pulse" />
+            <div className="lg:col-span-6 xl:col-span-7 space-y-4">
+              <div className="h-4 bg-stone-200/70 rounded w-24 animate-pulse" />
+              <div className="h-10 bg-stone-200/70 rounded w-3/4 animate-pulse" />
+              <div className="h-4 bg-stone-200/70 rounded w-32 animate-pulse" />
+              <div className="h-20 bg-stone-200/50 rounded w-full animate-pulse" />
+              <div className="h-12 bg-stone-200/70 rounded w-1/3 animate-pulse" />
+              <div className="h-14 bg-stone-200/60 rounded w-2/3 animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 404 Not Found State
+  if (is404 || (!loading && !product && !error)) {
+    return (
+      <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[60vh] flex items-center justify-center">
+        <div className="max-w-md mx-auto px-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-white border border-black/10 flex items-center justify-center mx-auto mb-4 text-[#6B6B6B]">
+            <ArrowLeft className="w-5 h-5" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#222222]">
+            Product not found.
+          </h1>
+          <p className="text-sm text-[#6B6B6B] mt-2">
+            We couldn't find the product you're looking for. It may have been moved or removed.
+          </p>
+          <a
+            href="#products"
+            className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium transition duration-150 active:scale-95 shadow-xs"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Products</span>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Network / Server Error State
+  if (error) {
+    return (
+      <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[60vh] flex items-center justify-center">
+        <div className="max-w-md mx-auto px-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200/60 flex items-center justify-center mx-auto mb-4 text-rose-600">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#222222]">
+            Unable to load product.
+          </h1>
+          <p className="text-sm text-[#6B6B6B] mt-2">
+            {error}
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setRetryKey((k) => k + 1)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium transition duration-150 active:scale-95 shadow-xs"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Retry</span>
+            </button>
+            <a
+              href="#products"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-black/10 bg-white hover:bg-stone-50 text-[#222222] text-sm font-medium transition duration-150"
+            >
+              <span>Back to Products</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#FAF8F4] py-8 sm:py-12">
@@ -143,7 +257,7 @@ export default function ProductDetails({
         {/* Product Information Main Grid (2 Columns on Desktop) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
           
-          {/* Left Column: Product Image (45% / 5-6 cols on desktop) */}
+          {/* Left Column: Product Image */}
           <div className="lg:col-span-6 xl:col-span-5">
             <div className="relative rounded-2xl lg:rounded-3xl overflow-hidden bg-white border border-black/5 shadow-xs aspect-[4/3] sm:aspect-square w-full">
               <img
@@ -155,7 +269,7 @@ export default function ProductDetails({
             </div>
           </div>
 
-          {/* Right Column: Product Metadata & Primary Actions (55% / 6-7 cols on desktop) */}
+          {/* Right Column: Product Metadata & Primary Actions */}
           <div className="lg:col-span-6 xl:col-span-7 flex flex-col text-left">
             
             {/* Category Label */}
@@ -280,6 +394,11 @@ export default function ProductDetails({
                 <div className="text-2xl font-semibold text-[#222222] mt-2">
                   {formatPrice(product.price)}
                 </div>
+                {product.priceInsights?.avgPrice && (
+                  <p className="text-xs text-[#6B6B6B] mt-1">
+                    30-day average: <strong>{formatPrice(product.priceInsights.avgPrice)}</strong>
+                  </p>
+                )}
               </div>
               <div className="mt-4 pt-4 border-t border-black/[0.05] flex items-center justify-between">
                 <span className="text-xs sm:text-sm text-[#6B6B6B]">Market Standing</span>
