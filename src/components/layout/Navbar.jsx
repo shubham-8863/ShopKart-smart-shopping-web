@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, ShoppingBag, User, Search, Menu, Package } from 'lucide-react';
+import { Heart, ShoppingBag, User, Search, Menu, Package, LogIn } from 'lucide-react';
 
 export default function Navbar({
   compareCount = 0,
@@ -7,7 +7,12 @@ export default function Navbar({
   wishlistCount = 0,
   priceAlertCount = 0,
   orderCount = 0,
+  currentUser = null,
 }) {
+  const userFirstName = currentUser?.fullName
+    ? currentUser.fullName.split(' ')[0]
+    : null;
+
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F4]/85 backdrop-blur-md transition-colors border-b border-black/[0.04]">
       <nav
@@ -98,15 +103,26 @@ export default function Navbar({
             )}
           </a>
 
-          {/* Account Button */}
-          <a
-            href="#account"
-            aria-label="Account"
-            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-black/10 bg-white hover:bg-stone-50 text-[#222222] text-sm font-medium transition duration-150 shadow-xs active:scale-95"
-          >
-            <User className="w-4 h-4 text-[#6B6B6B]" />
-            <span>Account</span>
-          </a>
+          {/* Account / Sign-In Button */}
+          {currentUser ? (
+            <a
+              href="#account"
+              aria-label="Account"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-black/10 bg-white hover:bg-stone-50 text-[#222222] text-sm font-medium transition duration-150 shadow-xs active:scale-95"
+            >
+              <User className="w-4 h-4 text-[#D86F5C]" />
+              <span className="truncate max-w-[110px]">{userFirstName || 'Account'}</span>
+            </a>
+          ) : (
+            <a
+              href="#auth"
+              aria-label="Sign in"
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-black/10 bg-white hover:bg-stone-50 text-[#222222] text-sm font-medium transition duration-150 shadow-xs active:scale-95"
+            >
+              <LogIn className="w-4 h-4 text-[#6B6B6B]" />
+              <span>Sign in</span>
+            </a>
+          )}
 
           {/* Mobile Menu Button */}
           <button

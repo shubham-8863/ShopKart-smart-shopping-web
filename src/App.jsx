@@ -14,6 +14,13 @@ import PriceAlerts from './pages/PriceAlerts';
 import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
 import Account from './pages/Account';
+import Auth from './pages/Auth';
+import { 
+  getCurrentUser, 
+  getStoredToken, 
+  setStoredToken, 
+  removeStoredToken 
+} from './services/api';
 
 // Helper to parse hash route information
 function getRouteInfo() {
@@ -25,6 +32,9 @@ function getRouteInfo() {
   if (hash.startsWith('#order/')) {
     const id = hash.replace('#order/', '');
     return { name: 'order-details', orderId: id };
+  }
+  if (hash === '#auth') {
+    return { name: 'auth', productId: null };
   }
   if (hash === '#products') {
     return { name: 'products', productId: null };
@@ -60,6 +70,10 @@ function App() {
   // Hash-based route state
   const [routeInfo, setRouteInfo] = useState(getRouteInfo());
 
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   // Comparison list state (holds up to 3 product IDs)
   const [compareIds, setCompareIds] = useState([]);
 
@@ -81,6 +95,33 @@ function App() {
   // Toast feedback notification state
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Initial Authentication Check on app launch
+  useEffect(() => {
+    const token = getStoredToken();
+    if (!token) {
+      setAuthLoading(false);
+      return;
+    }
+
+    getCurrentUser(token)
+      .then((user) => {
+        if (user) {
+          setCurrentUser(user);
+        } else {
+          removeStoredToken();
+          setCurrentUser(null);
+        }
+      })
+      .catch((err) => {
+        console.warn('Initial session restore failed:', err.message);
+        removeStoredToken();
+        setCurrentUser(null);
+      })
+      .finally(() => {
+        setAuthLoading(false);
+      });
+  }, []);
+
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
     if (!toastMessage) return;
@@ -100,6 +141,21 @@ function App() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  // Auth Action Handlers
+  const handleAuthSuccess = ({ user, token }) => {
+    setStoredToken(token);
+    setCurrentUser(user);
+    window.location.hash = '#account';
+    setToastMessage(`Welcome, ${user.fullName.split(' ')[0]}!`);
+  };
+
+  const handleLogout = () => {
+    removeStoredToken();
+    setCurrentUser(null);
+    window.location.hash = '#account';
+    setToastMessage('Signed out successfully.');
+  };
 
   // Comparison management handlers
   const handleToggleCompare = (productId) => {
@@ -244,6 +300,7 @@ function App() {
         wishlistCount={wishlistIds.length}
         priceAlertCount={activeAlertCount}
         orderCount={orders.length}
+        currentUser={currentUser}
       />
 
       {/* Floating Toast Notification */}
@@ -272,6 +329,19 @@ function App() {
             wishlistIds={wishlistIds}
             onToggleWishlist={handleToggleWishlist}
           />
+        ) : routeInfo.name === 'auth' ? (
+          currentUser ? (
+            <Account
+              currentUser={currentUser}
+              onLogout={handleLogout}
+              orders={orders}
+              wishlistIds={wishlistIds}
+              priceAlerts={priceAlerts}
+              onShowToast={setToastMessage}
+            />
+          ) : (
+            <Auth onAuthSuccess={handleAuthSuccess} />
+          )
         ) : routeInfo.name === 'compare' ? (
           <Compare
             compareIds={compareIds}
@@ -308,6 +378,8 @@ function App() {
           <OrderDetails orderId={routeInfo.orderId} orders={orders} />
         ) : routeInfo.name === 'account' ? (
           <Account
+            currentUser={currentUser}
+            onLogout={handleLogout}
             orders={orders}
             wishlistIds={wishlistIds}
             priceAlerts={priceAlerts}

@@ -11,12 +11,14 @@ async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
 
   try {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
       ...options,
+      headers,
     });
 
     const data = await response.json().catch(() => null);
@@ -55,6 +57,10 @@ async function request(endpoint, options = {}) {
     throw networkError;
   }
 }
+
+/* ==========================================================================
+   Catalog API (Categories & Products)
+   ========================================================================== */
 
 /**
  * Fetch all categories: GET /api/categories
@@ -136,8 +142,75 @@ export async function getProductById(id, signal) {
   return result.data;
 }
 
+/* ==========================================================================
+   Authentication API (Register, Login, Current User)
+   ========================================================================== */
+
+/**
+ * Register a new user: POST /api/auth/register
+ * @param {Object} payload - { fullName, email, password, phone }
+ */
+export async function registerUser(payload) {
+  const result = await request('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return result.data;
+}
+
+/**
+ * Authenticate user credentials: POST /api/auth/login
+ * @param {Object} payload - { email, password }
+ */
+export async function loginUser(payload) {
+  const result = await request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return result.data;
+}
+
+/**
+ * Get current authenticated user profile: GET /api/auth/me
+ * @param {string} token - JWT Token
+ * @param {AbortSignal} signal - Optional abort signal
+ */
+export async function getCurrentUser(token, signal) {
+  const result = await request('/auth/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result.data?.user;
+}
+
+/* ==========================================================================
+   Local Storage Token Helpers
+   ========================================================================== */
+
+export function getStoredToken() {
+  return localStorage.getItem('shopkart_token');
+}
+
+export function setStoredToken(token) {
+  if (token) {
+    localStorage.setItem('shopkart_token', token);
+  }
+}
+
+export function removeStoredToken() {
+  localStorage.removeItem('shopkart_token');
+}
+
 export default {
   getCategories,
   getProducts,
   getProductById,
+  registerUser,
+  loginUser,
+  getCurrentUser,
+  getStoredToken,
+  setStoredToken,
+  removeStoredToken,
 };
