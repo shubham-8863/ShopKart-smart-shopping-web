@@ -4,6 +4,7 @@ import cors from 'cors';
 import { testConnection } from './config/db.js';
 import productRoutes from './routes/productRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import wishlistRoutes from './routes/wishlistRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,6 +32,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api', productRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 // 404 Fallback
 app.use((req, res) => {

@@ -19,7 +19,10 @@ import {
   getCurrentUser, 
   getStoredToken, 
   setStoredToken, 
-  removeStoredToken 
+  removeStoredToken,
+  getWishlist,
+  addToWishlist as addToWishlistApi,
+  removeFromWishlist as removeFromWishlistApi
 } from './services/api';
 
 // Helper to parse hash route information
@@ -80,7 +83,7 @@ function App() {
   // Cart items state [{ productId: 1, quantity: 1 }]
   const [cartItems, setCartItems] = useState([]);
 
-  // Wishlist product IDs state [1, 5, 8]
+  // Wishlist product IDs state [1, 5, 8] - Server-backed when authenticated
   const [wishlistIds, setWishlistIds] = useState([]);
 
   // Price tracking alerts state [{ productId: 1, targetPrice: 27000, isActive: true }]
@@ -122,6 +125,26 @@ function App() {
       });
   }, []);
 
+  // Fetch server-backed wishlist when authenticated user changes
+  useEffect(() => {
+    const token = getStoredToken();
+    if (currentUser && token) {
+      getWishlist(token)
+        .then((res) => {
+          if (res && res.wishlistIds) {
+            setWishlistIds(res.wishlistIds);
+          } else if (res && res.data) {
+            setWishlistIds(res.data.map((item) => item.id));
+          }
+        })
+        .catch((err) => {
+          console.warn('Could not load user wishlist:', err.message);
+        });
+    } else if (!currentUser) {
+      setWishlistIds([]);
+    }
+  }, [currentUser]);
+
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
     if (!toastMessage) return;
@@ -153,6 +176,7 @@ function App() {
   const handleLogout = () => {
     removeStoredToken();
     setCurrentUser(null);
+    setWishlistIds([]);
     window.location.hash = '#account';
     setToastMessage('Signed out successfully.');
   };
@@ -184,18 +208,44 @@ function App() {
     setToastMessage('Comparison cleared.');
   };
 
-  // Wishlist toggle handler
-  const handleToggleWishlist = (productId) => {
+  // Server-backed Wishlist toggle handler
+  const handleToggleWishlist = async (productId) => {
     const numericId = Number(productId);
+    const token = getStoredToken();
+    const isCurrentlyWishlisted = wishlistIds.includes(numericId);
+
+    // Optimistic UI state update
     setWishlistIds((prev) => {
-      if (prev.includes(numericId)) {
-        setToastMessage('Removed from wishlist.');
+      if (isCurrentlyWishlisted) {
         return prev.filter((id) => id !== numericId);
       } else {
-        setToastMessage('Added to wishlist.');
         return [...prev, numericId];
       }
     });
+
+    setToastMessage(isCurrentlyWishlisted ? 'Removed from wishlist.' : 'Added to wishlist.');
+
+    // If authenticated, synchronize with MySQL backend
+    if (currentUser && token) {
+      try {
+        if (isCurrentlyWishlisted) {
+          await removeFromWishlistApi(numericId, token);
+        } else {
+          await addToWishlistApi(numericId, token);
+        }
+      } catch (err) {
+        console.error('Failed to sync wishlist with backend:', err);
+        // Revert optimistic update on server error
+        setWishlistIds((prev) => {
+          if (isCurrentlyWishlisted) {
+            return [...prev, numericId];
+          } else {
+            return prev.filter((id) => id !== numericId);
+          }
+        });
+        setToastMessage('Could not update wishlist. Please try again.');
+      }
+    }
   };
 
   // Price Alert handlers

@@ -186,6 +186,56 @@ export async function getCurrentUser(token, signal) {
 }
 
 /* ==========================================================================
+   Wishlist API (Authenticated)
+   ========================================================================== */
+
+/**
+ * Fetch authenticated user's wishlist: GET /api/wishlist
+ * @param {string} token - JWT Token
+ * @param {AbortSignal} signal - Optional abort signal
+ */
+export async function getWishlist(token, signal) {
+  const result = await request('/wishlist', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result;
+}
+
+/**
+ * Add a product to user's wishlist: POST /api/wishlist
+ * @param {number|string} productId - Product ID
+ * @param {string} token - JWT Token
+ */
+export async function addToWishlist(productId, token) {
+  const result = await request('/wishlist', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ productId: Number(productId) }),
+  });
+  return result;
+}
+
+/**
+ * Remove a product from user's wishlist: DELETE /api/wishlist/:productId
+ * @param {number|string} productId - Product ID
+ * @param {string} token - JWT Token
+ */
+export async function removeFromWishlist(productId, token) {
+  const result = await request(`/wishlist/${productId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return result;
+}
+
+/* ==========================================================================
    Local Storage Token Helpers
    ========================================================================== */
 
@@ -210,6 +260,9 @@ export default {
   registerUser,
   loginUser,
   getCurrentUser,
+  getWishlist,
+  addToWishlist,
+  removeFromWishlist,
   getStoredToken,
   setStoredToken,
   removeStoredToken,
