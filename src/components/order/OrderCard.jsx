@@ -1,6 +1,5 @@
 import React from 'react';
 import { CheckCircle2, ArrowRight, Package } from 'lucide-react';
-import products from '../../data/products';
 import { formatPrice } from '../../utils/pricing';
 
 function formatOrderDate(dateString) {
@@ -19,19 +18,13 @@ function formatOrderDate(dateString) {
 export default function OrderCard({ order }) {
   if (!order) return null;
 
-  // Resolve items against mock product catalog
-  const resolvedItems = (order.items || [])
-    .map((item) => ({
-      ...item,
-      product: products.find((p) => p.id === Number(item.productId)),
-    }))
-    .filter((item) => Boolean(item.product));
-
-  const previewItems = resolvedItems.slice(0, 3);
-  const remainingCount = resolvedItems.length - 3;
+  const items = order.items || [];
+  const previewItems = items.slice(0, 3);
+  const remainingCount = items.length - 3;
   const totalItemCount =
-    order.itemCount ||
-    resolvedItems.reduce((sum, item) => sum + item.quantity, 0);
+    order.itemCount || items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const displayCode = order.orderCode || order.id;
 
   return (
     <article className="bg-white rounded-2xl border border-black/5 p-6 sm:p-7 shadow-xs hover:shadow-md transition-all duration-200 text-left space-y-5">
@@ -41,7 +34,7 @@ export default function OrderCard({ order }) {
         <div>
           <div className="flex items-center gap-2.5">
             <span className="text-base sm:text-lg font-bold text-[#222222]">
-              Order #{order.id}
+              Order #{displayCode}
             </span>
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full">
               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
@@ -64,34 +57,41 @@ export default function OrderCard({ order }) {
       {/* Card Body: Purchased Product Thumbnails Preview */}
       <div className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {previewItems.map((item) => (
-            <div
-              key={item.productId}
-              className="flex items-center gap-3 p-2.5 rounded-xl bg-[#FAF8F4]/70 border border-black/[0.04]"
-            >
-              <a
-                href={`#product/${item.product.id}`}
-                className="w-12 h-12 rounded-lg overflow-hidden bg-stone-100 shrink-0 border border-black/5"
+          {previewItems.map((item, idx) => {
+            const product = item.product || {};
+            const productName = product.name || item.name || `Product #${item.productId}`;
+            const productImage = product.image || item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80';
+            const unitPrice = item.unitPrice || product.price || 0;
+
+            return (
+              <div
+                key={item.productId || idx}
+                className="flex items-center gap-3 p-2.5 rounded-xl bg-[#FAF8F4]/70 border border-black/[0.04]"
               >
-                <img
-                  src={item.product.image}
-                  alt={item.product.name}
-                  className="w-full h-full object-cover"
-                />
-              </a>
-              <div className="min-w-0 flex-1">
                 <a
-                  href={`#product/${item.product.id}`}
-                  className="text-xs font-medium text-[#222222] hover:text-[#D86F5C] truncate block transition-colors"
+                  href={`#product/${item.productId}`}
+                  className="w-12 h-12 rounded-lg overflow-hidden bg-stone-100 shrink-0 border border-black/5"
                 >
-                  {item.product.name}
+                  <img
+                    src={productImage}
+                    alt={productName}
+                    className="w-full h-full object-cover"
+                  />
                 </a>
-                <p className="text-[11px] text-[#6B6B6B]">
-                  Qty: {item.quantity} × {formatPrice(item.unitPrice || item.product.price)}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <a
+                    href={`#product/${item.productId}`}
+                    className="text-xs font-medium text-[#222222] hover:text-[#D86F5C] truncate block transition-colors"
+                  >
+                    {productName}
+                  </a>
+                  <p className="text-[11px] text-[#6B6B6B]">
+                    Qty: {item.quantity} × {formatPrice(unitPrice)}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {remainingCount > 0 && (
@@ -114,7 +114,7 @@ export default function OrderCard({ order }) {
         </div>
 
         <a
-          href={`#order/${order.id}`}
+          href={`#order/${displayCode}`}
           className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[#222222] hover:text-[#D86F5C] transition-colors"
         >
           <span>View order</span>

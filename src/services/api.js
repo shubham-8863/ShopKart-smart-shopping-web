@@ -358,6 +358,57 @@ export async function clearCart(token) {
 }
 
 /* ==========================================================================
+   Orders API (Authenticated)
+   ========================================================================== */
+
+/**
+ * Place a new order from current database cart: POST /api/orders
+ * @param {Object} payload - { customerName, customerEmail, customerPhone, shippingAddress, shippingCity, shippingState, shippingPincode, paymentMethod }
+ * @param {string} token - JWT Token
+ */
+export async function createOrder(payload, token) {
+  const result = await request('/orders', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return result.data;
+}
+
+/**
+ * Fetch authenticated user's order history: GET /api/orders
+ * @param {string} token - JWT Token
+ * @param {AbortSignal} signal - Optional abort signal
+ */
+export async function getOrders(token, signal) {
+  const result = await request('/orders', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result.data || [];
+}
+
+/**
+ * Fetch single order details by code or ID: GET /api/orders/:id
+ * @param {string|number} id - Order code (e.g. SK1001) or numeric ID
+ * @param {string} token - JWT Token
+ * @param {AbortSignal} signal - Optional abort signal
+ */
+export async function getOrderById(id, token, signal) {
+  const result = await request(`/orders/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result.data;
+}
+
+/* ==========================================================================
    Local Storage Token Helpers
    ========================================================================== */
 
@@ -392,6 +443,9 @@ export default {
   updateCartItem,
   removeCartItem,
   clearCart,
+  createOrder,
+  getOrders,
+  getOrderById,
   getStoredToken,
   setStoredToken,
   removeStoredToken,

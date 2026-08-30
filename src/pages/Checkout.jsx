@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShoppingBag, 
   ArrowRight, 
@@ -7,36 +7,98 @@ import {
   CreditCard, 
   Banknote, 
   QrCode, 
-  CheckCircle2, 
-  Truck
+  AlertCircle,
+  LogIn
 } from 'lucide-react';
-import products from '../data/products';
-import { formatPrice, calculateOrderTotals } from '../utils/pricing';
+import { formatPrice } from '../utils/pricing';
 
-export default function Checkout({ cartItems = [], onPlaceOrder }) {
-  // Form State
+export default function Checkout({
+  cartData = { items: [], subtotal: 0, delivery: 0, total: 0 },
+  currentUser = null,
+  onPlaceOrder,
+}) {
+  // Extract items and authoritative totals
+  const items = cartData?.items || [];
+  const subtotal = cartData?.subtotal || 0;
+  const delivery = cartData?.delivery || 0;
+  const total = cartData?.total || 0;
+  const isFreeDelivery = delivery === 0;
+
+  // Form State prefilled from currentUser if available
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
+    fullName: currentUser?.fullName || '',
+    email: currentUser?.email || '',
+    phone: currentUser?.phone || '',
+    address: currentUser?.address || '',
+    city: currentUser?.city || '',
+    state: currentUser?.state || '',
+    pincode: currentUser?.pincode || '',
     paymentMethod: '',
   });
 
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Compute Order Pricing using shared utility
-  const { resolvedItems, subtotal, isFreeDelivery, deliveryCost, total } = calculateOrderTotals(
-    cartItems,
-    products
-  );
+  // Sync with currentUser when loaded
+  useEffect(() => {
+    if (currentUser) {
+      setFormData((prev) => ({
+        fullName: prev.fullName || currentUser.fullName || '',
+        email: prev.email || currentUser.email || '',
+        phone: prev.phone || currentUser.phone || '',
+        address: prev.address || currentUser.address || '',
+        city: prev.city || currentUser.city || '',
+        state: prev.state || currentUser.state || '',
+        pincode: prev.pincode || currentUser.pincode || '',
+        paymentMethod: prev.paymentMethod,
+      }));
+    }
+  }, [currentUser]);
 
-  // Empty Cart Protection
-  if (resolvedItems.length === 0) {
+  /* ==========================================================================
+     1. Unauthenticated Prompt
+     ========================================================================== */
+  if (!currentUser) {
+    return (
+      <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[65vh] flex items-center justify-center text-center">
+        <div className="max-w-md mx-auto px-6">
+          <p className="text-xs sm:text-[13px] font-medium tracking-[0.15em] uppercase text-[#D86F5C] mb-3">
+            Checkout
+          </p>
+          <div className="w-14 h-14 rounded-full bg-white border border-black/10 flex items-center justify-center mx-auto mb-5 text-[#D86F5C] shadow-xs">
+            <ShoppingBag className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#222222]">
+            Sign in to complete your purchase.
+          </h1>
+          <p className="text-sm sm:text-base text-[#6B6B6B] mt-2 leading-relaxed">
+            Please sign in with your ShopKart account to proceed with checkout.
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <a
+              href="#auth"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium transition duration-150 active:scale-95 shadow-xs"
+            >
+              <LogIn className="w-4 h-4 text-[#D86F5C]" />
+              <span>Sign in</span>
+            </a>
+            <a
+              href="#cart"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-black/10 hover:bg-stone-50 text-[#222222] text-sm font-medium transition duration-150 active:scale-95 shadow-2xs"
+            >
+              <span>Back to Cart</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ==========================================================================
+     2. Empty Cart Protection
+     ========================================================================== */
+  if (items.length === 0) {
     return (
       <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[65vh] flex items-center justify-center text-center">
         <div className="max-w-md mx-auto px-6">
@@ -76,9 +138,11 @@ export default function Checkout({ cartItems = [], onPlaceOrder }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear field-specific error as user types
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+    if (submitError) {
+      setSubmitError(null);
     }
   };
 
@@ -87,6 +151,9 @@ export default function Checkout({ cartItems = [], onPlaceOrder }) {
     setFormData((prev) => ({ ...prev, paymentMethod: method }));
     if (errors.paymentMethod) {
       setErrors((prev) => ({ ...prev, paymentMethod: '' }));
+    }
+    if (submitError) {
+      setSubmitError(null);
     }
   };
 
@@ -137,36 +204,31 @@ export default function Checkout({ cartItems = [], onPlaceOrder }) {
   };
 
   // Form Submit Handler
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm() || isSubmitting) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    setSubmitError(null);
+
+    try {
       if (onPlaceOrder) {
-        onPlaceOrder({
-          customer: {
-            fullName: formData.fullName,
-            email: formData.email,
-            phone: formData.phone,
-          },
-          shippingAddress: {
-            address: formData.address,
-            city: formData.city,
-            state: formData.state,
-            pincode: formData.pincode,
-          },
+        await onPlaceOrder({
+          customerName: formData.fullName.trim(),
+          customerEmail: formData.email.trim(),
+          customerPhone: formData.phone.trim(),
+          shippingAddress: formData.address.trim(),
+          shippingCity: formData.city.trim(),
+          shippingState: formData.state.trim(),
+          shippingPincode: formData.pincode.trim(),
           paymentMethod: formData.paymentMethod,
-          items: resolvedItems,
-          subtotal,
-          deliveryCost,
-          total,
-          itemCount: resolvedItems.reduce((sum, item) => sum + item.quantity, 0),
         });
       }
-      window.location.hash = '#order-success';
-    }, 400);
+    } catch (err) {
+      console.error('Order placement failed:', err);
+      setSubmitError(err.message || 'Unable to place order. Please check your details and try again.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -185,6 +247,17 @@ export default function Checkout({ cartItems = [], onPlaceOrder }) {
             Enter your details and review your order before placing it.
           </p>
         </div>
+
+        {/* Global Error Banner */}
+        {submitError && (
+          <div className="mb-8 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 flex items-start gap-3 text-sm text-left max-w-4xl">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Unable to place order</p>
+              <p className="text-xs sm:text-sm mt-0.5 text-rose-600">{submitError}</p>
+            </div>
+          </div>
+        )}
 
         {/* Two-Column Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
@@ -487,7 +560,7 @@ export default function Checkout({ cartItems = [], onPlaceOrder }) {
               <div className="mt-4 p-3 rounded-xl bg-stone-50 border border-black/[0.04] text-[11px] text-[#6B6B6B] flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>
-                  Frontend Prototype: No card details or banking credentials are requested or charged.
+                  Secure, encrypted transaction. Stored securely in ShopKart backend.
                 </span>
               </div>
             </div>
@@ -497,7 +570,7 @@ export default function Checkout({ cartItems = [], onPlaceOrder }) {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-4 px-8 rounded-xl bg-[#222222] hover:bg-[#333333] disabled:bg-[#444444] text-white font-medium text-base flex items-center justify-center gap-2 shadow-xs transition duration-150 active:scale-[0.98]"
+                className="w-full py-4 px-8 rounded-xl bg-[#222222] hover:bg-[#333333] disabled:bg-[#444444] text-white font-medium text-base flex items-center justify-center gap-2 shadow-xs transition duration-150 active:scale-[0.98] disabled:opacity-60"
               >
                 <span>{isSubmitting ? 'Placing Order...' : 'Place Order'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -524,28 +597,28 @@ export default function Checkout({ cartItems = [], onPlaceOrder }) {
 
               {/* Items List (Compact Review) */}
               <div className="divide-y divide-black/[0.05] max-h-[300px] overflow-y-auto pr-1">
-                {resolvedItems.map((item) => (
+                {items.map((item) => (
                   <div key={item.productId} className="py-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-stone-100 shrink-0 border border-black/5">
                         <img
-                          src={item.product.image}
-                          alt={item.product.name}
+                          src={item.image}
+                          alt={item.name}
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-[#222222] truncate">
-                          {item.product.name}
+                          {item.name}
                         </p>
                         <p className="text-[11px] text-[#6B6B6B]">
-                          Qty: {item.quantity} × {formatPrice(item.product.price)}
+                          Qty: {item.quantity} × {formatPrice(item.unitPrice)}
                         </p>
                       </div>
                     </div>
 
                     <span className="text-xs font-semibold text-[#222222] shrink-0">
-                      {formatPrice(item.product.price * item.quantity)}
+                      {formatPrice(item.itemSubtotal || item.unitPrice * item.quantity)}
                     </span>
                   </div>
                 ))}
@@ -566,7 +639,7 @@ export default function Checkout({ cartItems = [], onPlaceOrder }) {
                     {isFreeDelivery ? (
                       <span className="text-emerald-600 font-medium">Free</span>
                     ) : (
-                      <span className="text-[#222222]">{formatPrice(99)}</span>
+                      <span className="text-[#222222]">{formatPrice(delivery)}</span>
                     )}
                   </span>
                 </div>

@@ -27,7 +27,9 @@ import {
   addToCart as addToCartApi,
   updateCartItem as updateCartItemApi,
   removeCartItem as removeCartItemApi,
-  clearCart as clearCartApi
+  clearCart as clearCartApi,
+  createOrder as createOrderApi,
+  getOrders as getOrdersApi,
 } from './services/api';
 
 // Helper to parse hash route information
@@ -103,8 +105,10 @@ function App() {
   // Price tracking alerts state [{ productId: 1, targetPrice: 27000, isActive: true }]
   const [priceAlerts, setPriceAlerts] = useState([]);
 
-  // Normalized order history collection
+  // Server-backed Order history collection
   const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState(null);
 
   // Latest placed order record for OrderSuccess screen
   const [lastOrder, setLastOrder] = useState(null);
@@ -159,7 +163,27 @@ function App() {
       });
   }, [currentUser]);
 
-  // Fetch server-backed Wishlist and Cart when authenticated user changes
+  // Fetch Orders helper
+  const fetchOrders = useCallback(() => {
+    const token = getStoredToken();
+    if (!token || !currentUser) return;
+
+    setOrdersLoading(true);
+    setOrdersError(null);
+
+    getOrdersApi(token)
+      .then((data) => {
+        setOrders(data);
+        setOrdersLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching orders:', err);
+        setOrdersError(err.message || 'Unable to load orders.');
+        setOrdersLoading(false);
+      });
+  }, [currentUser]);
+
+  // Fetch server-backed Wishlist, Cart, and Orders when authenticated user changes
   useEffect(() => {
     const token = getStoredToken();
     if (currentUser && token) {
@@ -178,6 +202,9 @@ function App() {
 
       // 2. Load Cart
       fetchCart();
+
+      // 3. Load Orders
+      fetchOrders();
     } else if (!currentUser) {
       setWishlistIds([]);
       setCartData({
@@ -189,8 +216,12 @@ function App() {
       });
       setCartError(null);
       setCartLoading(false);
+      setOrders([]);
+      setOrdersLoading(false);
+      setOrdersError(null);
+      setLastOrder(null);
     }
-  }, [currentUser, fetchCart]);
+  }, [currentUser, fetchCart, fetchOrders]);
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
@@ -231,6 +262,8 @@ function App() {
       total: 0,
       freeDeliveryThreshold: 2000,
     });
+    setOrders([]);
+    setLastOrder(null);
     window.location.hash = '#account';
     setToastMessage('Signed out successfully.');
   };
@@ -385,58 +418,38 @@ function App() {
     setToastMessage('Price tracking stopped.');
   };
 
-  // Order placement handler: Creates persistent order record and clears cart
-  const handlePlaceOrder = (orderDetails) => {
-    const orderId = `SK${1001 + orders.length}`;
-    const newOrder = {
-      id: orderId,
-      createdAt: new Date().toISOString(),
-      items: orderDetails.items.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice: item.product?.price || item.unitPrice || 0,
-      })),
-      customer: orderDetails.customer,
-      shippingAddress: orderDetails.shippingAddress,
-      paymentMethod: orderDetails.paymentMethod,
-      status: 'Placed',
-      subtotal: orderDetails.subtotal,
-      deliveryCost: orderDetails.deliveryCost,
-      delivery: orderDetails.deliveryCost,
-      total: orderDetails.total,
-      itemCount: orderDetails.itemCount,
-    };
-
-    setOrders((prev) => [newOrder, ...prev]);
-    setLastOrder(newOrder);
-
-    // Clear server cart if user is authenticated
-    const token = getStoredToken();
-    if (currentUser && token) {
-      clearCartApi(token)
-        .then((cleared) => setCartData(cleared))
-        .catch(() => {});
+  // Server-backed Order Placement Handler
+  const handlePlaceOrder = async (checkoutPayload) => {
+    if (!currentUser) {
+      setToastMessage('Sign in to place an order.');
+      window.location.hash = '#auth';
+      return;
     }
 
+    const token = getStoredToken();
+    const createdOrder = await createOrderApi(checkoutPayload, token);
+
+    // 1. Update orders state
+    setOrders((prev) => [createdOrder, ...prev]);
+    setLastOrder(createdOrder);
+
+    // 2. Clear local cart cache (database cart was cleared by transaction)
+    setCartData({
+      items: [],
+      subtotal: 0,
+      delivery: 0,
+      total: 0,
+      freeDeliveryThreshold: 2000,
+    });
+
     setToastMessage('Order placed successfully.');
+    window.location.hash = '#order-success';
+    return createdOrder;
   };
 
-  // Compute active counts for Navbar badges (SUM of all quantities)
+  // Compute active counts for Navbar badges
   const totalCartCount = (cartData?.items || []).reduce((sum, item) => sum + item.quantity, 0);
   const activeAlertCount = priceAlerts.filter((a) => a.isActive).length;
-
-  // Resolved cartItems for Checkout compatibility
-  const checkoutCartItems = (cartData?.items || []).map((item) => ({
-    productId: item.productId,
-    quantity: item.quantity,
-    product: {
-      id: item.productId,
-      name: item.name,
-      category: item.category,
-      price: item.unitPrice,
-      image: item.image,
-    },
-  }));
 
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-[#222222] font-sans antialiased flex flex-col relative">
@@ -508,7 +521,8 @@ function App() {
           />
         ) : routeInfo.name === 'checkout' ? (
           <Checkout
-            cartItems={checkoutCartItems}
+            cartData={cartData}
+            currentUser={currentUser}
             onPlaceOrder={handlePlaceOrder}
           />
         ) : routeInfo.name === 'order-success' ? (
@@ -525,9 +539,19 @@ function App() {
             onRemovePriceAlert={handleRemovePriceAlert}
           />
         ) : routeInfo.name === 'orders' ? (
-          <Orders orders={orders} />
+          <Orders
+            orders={orders}
+            currentUser={currentUser}
+            loading={ordersLoading}
+            error={ordersError}
+            onRetry={fetchOrders}
+          />
         ) : routeInfo.name === 'order-details' ? (
-          <OrderDetails orderId={routeInfo.orderId} orders={orders} />
+          <OrderDetails
+            orderId={routeInfo.orderId}
+            orders={orders}
+            currentUser={currentUser}
+          />
         ) : routeInfo.name === 'account' ? (
           <Account
             currentUser={currentUser}

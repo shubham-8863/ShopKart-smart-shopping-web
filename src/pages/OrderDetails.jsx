@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Package, 
@@ -7,9 +7,12 @@ import {
   MapPin, 
   ShieldCheck,
   ShoppingBag,
-  ArrowRight
+  ArrowRight,
+  AlertCircle,
+  RefreshCw,
+  LogIn
 } from 'lucide-react';
-import products from '../data/products';
+import { getOrderById, getStoredToken } from '../services/api';
 import { formatPrice } from '../utils/pricing';
 
 function formatOrderDate(dateString) {
@@ -25,17 +28,116 @@ function formatOrderDate(dateString) {
   }
 }
 
-export default function OrderDetails({ orderId, orders = [] }) {
-  // Find order by ID in the application orders collection
-  const order = orders.find((o) => o.id === orderId);
+export default function OrderDetails({ orderId, orders = [], currentUser = null }) {
+  const [order, setOrder] = useState(
+    orders.find((o) => o.id === orderId || o.orderCode === orderId) || null
+  );
+  const [loading, setLoading] = useState(!order);
+  const [error, setError] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
 
-  // Invalid or Not Found Order State
-  if (!order) {
+  useEffect(() => {
+    const token = getStoredToken();
+    if (!token || !currentUser || !orderId) {
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    const controller = new AbortController();
+
+    setLoading(true);
+    setError(null);
+
+    getOrderById(orderId, token, controller.signal)
+      .then((data) => {
+        if (isMounted) {
+          setOrder(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') return;
+        if (isMounted) {
+          console.error('Error fetching order details:', err);
+          setError(err.message || 'Unable to load order details.');
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [orderId, currentUser, retryKey]);
+
+  /* ==========================================================================
+     1. Unauthenticated Prompt
+     ========================================================================== */
+  if (!currentUser) {
     return (
       <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[65vh] flex items-center justify-center text-center">
         <div className="max-w-md mx-auto px-6">
           <p className="text-xs sm:text-[13px] font-medium tracking-[0.15em] uppercase text-[#D86F5C] mb-3">
-            Order Not Found
+            Order Details
+          </p>
+          <div className="w-14 h-14 rounded-full bg-white border border-black/10 flex items-center justify-center mx-auto mb-5 text-[#D86F5C] shadow-xs">
+            <Package className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#222222]">
+            Sign in to view order details.
+          </h1>
+          <p className="text-sm sm:text-base text-[#6B6B6B] mt-2 leading-relaxed">
+            Please sign in to access information about this order.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="#auth"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium transition duration-150 active:scale-95 shadow-xs"
+            >
+              <LogIn className="w-4 h-4 text-[#D86F5C]" />
+              <span>Sign in</span>
+            </a>
+            <a
+              href="#products"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-black/10 bg-white hover:bg-stone-50 text-[#222222] text-sm font-medium transition duration-150"
+            >
+              <span>Explore Products</span>
+              <ArrowRight className="w-4 h-4 text-[#6B6B6B]" />
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ==========================================================================
+     2. Loading Skeleton State
+     ========================================================================== */
+  if (loading) {
+    return (
+      <div className="bg-[#FAF8F4] py-8 sm:py-12">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+          <div className="h-4 bg-stone-200/70 rounded w-32 mb-6 animate-pulse" />
+          <div className="h-10 bg-stone-200/70 rounded w-64 mb-8 animate-pulse" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-8 bg-white rounded-2xl border border-black/5 p-6 h-96 animate-pulse" />
+            <div className="lg:col-span-4 bg-white rounded-2xl border border-black/5 p-6 h-80 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ==========================================================================
+     3. Not Found or Error State
+     ========================================================================== */
+  if (!order || error) {
+    return (
+      <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[65vh] flex items-center justify-center text-center">
+        <div className="max-w-md mx-auto px-6">
+          <p className="text-xs sm:text-[13px] font-medium tracking-[0.15em] uppercase text-[#D86F5C] mb-3">
+            Order Details
           </p>
           <div className="w-14 h-14 rounded-full bg-white border border-black/10 flex items-center justify-center mx-auto mb-5 text-[#6B6B6B] shadow-xs">
             <Package className="w-6 h-6" />
@@ -44,7 +146,7 @@ export default function OrderDetails({ orderId, orders = [] }) {
             We couldn't find that order.
           </h1>
           <p className="text-sm sm:text-base text-[#6B6B6B] mt-2 leading-relaxed">
-            The order may no longer be available in this session.
+            {error || 'This order may belong to another account or does not exist.'}
           </p>
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
             <a
@@ -54,51 +156,33 @@ export default function OrderDetails({ orderId, orders = [] }) {
               <ArrowLeft className="w-4 h-4" />
               <span>Back to My Orders</span>
             </a>
-            <a
-              href="#products"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white border border-black/10 hover:bg-stone-50 text-[#222222] text-xs sm:text-sm font-medium transition duration-150 active:scale-95 shadow-2xs"
-            >
-              <span>Continue Shopping</span>
-              <ArrowRight className="w-4 h-4" />
-            </a>
+            {error && (
+              <button
+                type="button"
+                onClick={() => setRetryKey((k) => k + 1)}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white border border-black/10 hover:bg-stone-50 text-[#222222] text-xs sm:text-sm font-medium transition duration-150 active:scale-95 shadow-2xs"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Retry</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
-  // Resolve items against mock product catalog for visuals, while preserving unitPrice
-  const resolvedItems = (order.items || [])
-    .map((item) => ({
-      ...item,
-      product: products.find((p) => p.id === Number(item.productId)),
-    }))
-    .filter((item) => Boolean(item.product));
-
-  // Compute or use stored pricing totals
-  const subtotal =
-    order.subtotal !== undefined
-      ? order.subtotal
-      : resolvedItems.reduce(
-          (sum, item) => sum + item.unitPrice * item.quantity,
-          0
-        );
-
-  const deliveryCost =
-    order.deliveryCost !== undefined
-      ? order.deliveryCost
-      : order.delivery !== undefined
-      ? order.delivery
-      : subtotal >= 2000
-      ? 0
-      : 99;
-
-  const total =
-    order.total !== undefined ? order.total : subtotal + deliveryCost;
-
+  /* ==========================================================================
+     4. Populated Order Details State (Server-backed)
+     ========================================================================== */
+  const items = order.items || [];
+  const subtotal = order.subtotal || 0;
+  const deliveryCost = order.deliveryCost ?? order.delivery ?? 0;
+  const total = order.total || subtotal + deliveryCost;
   const totalItemCount =
-    order.itemCount ||
-    resolvedItems.reduce((sum, item) => sum + item.quantity, 0);
+    order.itemCount || items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const displayCode = order.orderCode || order.id;
 
   return (
     <div className="bg-[#FAF8F4] py-8 sm:py-12">
@@ -122,7 +206,7 @@ export default function OrderDetails({ orderId, orders = [] }) {
               Order Details
             </p>
             <h1 className="text-3xl sm:text-4xl lg:text-[40px] font-semibold text-[#222222] tracking-tight leading-[1.1]">
-              Order #{order.id}
+              Order #{displayCode}
             </h1>
             <p className="text-xs sm:text-sm text-[#6B6B6B] mt-2">
               Placed on {formatOrderDate(order.createdAt)}
@@ -154,39 +238,44 @@ export default function OrderDetails({ orderId, orders = [] }) {
 
               {/* Items List */}
               <div className="divide-y divide-black/[0.05]">
-                {resolvedItems.map((item) => {
-                  const itemTotal = item.unitPrice * item.quantity;
+                {items.map((item, idx) => {
+                  const product = item.product || {};
+                  const productName = product.name || item.name || `Product #${item.productId}`;
+                  const productCategory = product.category || item.category || 'Product';
+                  const productImage = product.image || item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80';
+                  const unitPrice = item.unitPrice || product.price || 0;
+                  const itemTotal = item.lineTotal || unitPrice * item.quantity;
 
                   return (
                     <div
-                      key={item.productId}
+                      key={item.productId || idx}
                       className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                     >
                       {/* Product Thumbnail & Details */}
                       <div className="flex items-center gap-4 min-w-0">
                         <a
-                          href={`#product/${item.product.id}`}
+                          href={`#product/${item.productId}`}
                           className="w-20 h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0 border border-black/5 group"
                         >
                           <img
-                            src={item.product.image}
-                            alt={item.product.name}
+                            src={productImage}
+                            alt={productName}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                         </a>
 
                         <div className="min-w-0">
                           <p className="text-[11px] font-medium tracking-wider uppercase text-[#D86F5C] mb-0.5">
-                            {item.product.category}
+                            {productCategory}
                           </p>
                           <a
-                            href={`#product/${item.product.id}`}
+                            href={`#product/${item.productId}`}
                             className="text-sm sm:text-base font-semibold text-[#222222] hover:text-[#D86F5C] line-clamp-1 transition-colors"
                           >
-                            {item.product.name}
+                            {productName}
                           </a>
                           <p className="text-xs text-[#6B6B6B] mt-1">
-                            Unit Price: {formatPrice(item.unitPrice)}
+                            Unit Price: {formatPrice(unitPrice)}
                           </p>
                           <p className="text-xs text-[#6B6B6B]">
                             Quantity: <strong>{item.quantity}</strong>
@@ -258,7 +347,7 @@ export default function OrderDetails({ orderId, orders = [] }) {
                 </p>
                 <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-[#6B6B6B] bg-[#FAF8F4] p-2.5 rounded-xl border border-black/[0.04]">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Frontend Prototype: Paid or selected at checkout</span>
+                  <span>Secure record in ShopKart MySQL database</span>
                 </div>
               </div>
             </div>
@@ -281,8 +370,8 @@ export default function OrderDetails({ orderId, orders = [] }) {
                 )}
                 {order.shippingAddress?.city && order.shippingAddress?.state && (
                   <p>
-                    {order.shippingAddress.city}, {order.shippingAddress.state} -{' '}
-                    {order.shippingAddress.pincode}
+                    {order.shippingAddress.city}, {order.shippingAddress.state}
+                    {order.shippingAddress?.pincode ? ` - ${order.shippingAddress.pincode}` : ''}
                   </p>
                 )}
                 {order.customer?.phone && (
