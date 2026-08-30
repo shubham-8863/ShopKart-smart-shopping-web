@@ -38,8 +38,9 @@ export default function ProductDetails({
   const [is404, setIs404] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
 
-  // Temporary UI action feedback states
+  // UI action feedback states
   const [isAddedToCart, setIsAddedToCart] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   // Price tracking inline edit state
   const [isEditingAlert, setIsEditingAlert] = useState(false);
@@ -118,13 +119,21 @@ export default function ProductDetails({
   }, [currentAlert, product, isEditingAlert]);
 
   // Handle Add to Cart action
-  const handleAddToCart = () => {
-    if (!product) return;
-    setIsAddedToCart(true);
-    if (onAddToCart) {
-      onAddToCart(product.id);
+  const handleAddToCart = async () => {
+    if (!product || isAddingToCart) return;
+    setIsAddingToCart(true);
+
+    try {
+      if (onAddToCart) {
+        const success = await onAddToCart(product.id);
+        if (success !== false) {
+          setIsAddedToCart(true);
+          setTimeout(() => setIsAddedToCart(false), 2200);
+        }
+      }
+    } finally {
+      setIsAddingToCart(false);
     }
-    setTimeout(() => setIsAddedToCart(false), 2200);
   };
 
   // Handle Price Alert submission
@@ -316,8 +325,9 @@ export default function ProductDetails({
               {/* Primary: Add to Cart */}
               <button
                 type="button"
+                disabled={isAddingToCart}
                 onClick={handleAddToCart}
-                className={`h-12 px-8 rounded-xl font-medium text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-xs transition duration-150 active:scale-[0.98] ${
+                className={`h-12 px-8 rounded-xl font-medium text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-xs transition duration-150 active:scale-[0.98] disabled:opacity-60 ${
                   isAddedToCart
                     ? 'bg-emerald-600 text-white'
                     : 'bg-[#222222] hover:bg-[#333333] text-white'
@@ -331,7 +341,7 @@ export default function ProductDetails({
                 ) : (
                   <>
                     <ShoppingBag className="w-4 h-4" />
-                    <span>Add to Cart</span>
+                    <span>{isAddingToCart ? 'Adding...' : 'Add to Cart'}</span>
                   </>
                 )}
               </button>

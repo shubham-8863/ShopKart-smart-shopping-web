@@ -236,6 +236,93 @@ export async function removeFromWishlist(productId, token) {
 }
 
 /* ==========================================================================
+   Cart API (Authenticated)
+   ========================================================================== */
+
+/**
+ * Fetch authenticated user's cart: GET /api/cart
+ * @param {string} token - JWT Token
+ * @param {AbortSignal} signal - Optional abort signal
+ */
+export async function getCart(token, signal) {
+  const result = await request('/cart', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result.data;
+}
+
+/**
+ * Add an item to authenticated user's cart: POST /api/cart/items
+ * @param {number|string} productId - Product ID
+ * @param {number} quantity - Item Quantity (default 1)
+ * @param {string} token - JWT Token
+ */
+export async function addToCart(productId, quantity = 1, token) {
+  const result = await request('/cart/items', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      productId: Number(productId),
+      quantity: Number(quantity),
+    }),
+  });
+  return result.data;
+}
+
+/**
+ * Update quantity for a cart item: PATCH /api/cart/items/:productId
+ * @param {number|string} productId - Product ID
+ * @param {number} quantity - New target quantity
+ * @param {string} token - JWT Token
+ */
+export async function updateCartItem(productId, quantity, token) {
+  const result = await request(`/cart/items/${productId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      quantity: Number(quantity),
+    }),
+  });
+  return result.data;
+}
+
+/**
+ * Remove an item from authenticated user's cart: DELETE /api/cart/items/:productId
+ * @param {number|string} productId - Product ID
+ * @param {string} token - JWT Token
+ */
+export async function removeCartItem(productId, token) {
+  const result = await request(`/cart/items/${productId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return result.data;
+}
+
+/**
+ * Clear authenticated user's cart: DELETE /api/cart
+ * @param {string} token - JWT Token
+ */
+export async function clearCart(token) {
+  const result = await request('/cart', {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return result.data;
+}
+
+/* ==========================================================================
    Local Storage Token Helpers
    ========================================================================== */
 
@@ -263,6 +350,11 @@ export default {
   getWishlist,
   addToWishlist,
   removeFromWishlist,
+  getCart,
+  addToCart,
+  updateCartItem,
+  removeCartItem,
+  clearCart,
   getStoredToken,
   setStoredToken,
   removeStoredToken,

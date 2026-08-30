@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from './components/layout/Navbar';
 import Hero from './components/home/Hero';
 import CategorySection from './components/home/CategorySection';
@@ -22,7 +22,12 @@ import {
   removeStoredToken,
   getWishlist,
   addToWishlist as addToWishlistApi,
-  removeFromWishlist as removeFromWishlistApi
+  removeFromWishlist as removeFromWishlistApi,
+  getCart,
+  addToCart as addToCartApi,
+  updateCartItem as updateCartItemApi,
+  removeCartItem as removeCartItemApi,
+  clearCart as clearCartApi
 } from './services/api';
 
 // Helper to parse hash route information
@@ -80,10 +85,19 @@ function App() {
   // Comparison list state (holds up to 3 product IDs)
   const [compareIds, setCompareIds] = useState([]);
 
-  // Cart items state [{ productId: 1, quantity: 1 }]
-  const [cartItems, setCartItems] = useState([]);
+  // Server-backed Cart State
+  const [cartData, setCartData] = useState({
+    items: [],
+    subtotal: 0,
+    delivery: 0,
+    total: 0,
+    freeDeliveryThreshold: 2000,
+  });
+  const [cartLoading, setCartLoading] = useState(false);
+  const [cartError, setCartError] = useState(null);
+  const [updatingCartItemId, setUpdatingCartItemId] = useState(null);
 
-  // Wishlist product IDs state [1, 5, 8] - Server-backed when authenticated
+  // Server-backed Wishlist product IDs state [1, 5, 8]
   const [wishlistIds, setWishlistIds] = useState([]);
 
   // Price tracking alerts state [{ productId: 1, targetPrice: 27000, isActive: true }]
@@ -125,10 +139,31 @@ function App() {
       });
   }, []);
 
-  // Fetch server-backed wishlist when authenticated user changes
+  // Fetch Cart helper
+  const fetchCart = useCallback(() => {
+    const token = getStoredToken();
+    if (!token || !currentUser) return;
+
+    setCartLoading(true);
+    setCartError(null);
+
+    getCart(token)
+      .then((data) => {
+        setCartData(data);
+        setCartLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching cart:', err);
+        setCartError(err.message || 'Unable to load cart.');
+        setCartLoading(false);
+      });
+  }, [currentUser]);
+
+  // Fetch server-backed Wishlist and Cart when authenticated user changes
   useEffect(() => {
     const token = getStoredToken();
     if (currentUser && token) {
+      // 1. Load Wishlist
       getWishlist(token)
         .then((res) => {
           if (res && res.wishlistIds) {
@@ -140,10 +175,22 @@ function App() {
         .catch((err) => {
           console.warn('Could not load user wishlist:', err.message);
         });
+
+      // 2. Load Cart
+      fetchCart();
     } else if (!currentUser) {
       setWishlistIds([]);
+      setCartData({
+        items: [],
+        subtotal: 0,
+        delivery: 0,
+        total: 0,
+        freeDeliveryThreshold: 2000,
+      });
+      setCartError(null);
+      setCartLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, fetchCart]);
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
@@ -177,6 +224,13 @@ function App() {
     removeStoredToken();
     setCurrentUser(null);
     setWishlistIds([]);
+    setCartData({
+      items: [],
+      subtotal: 0,
+      delivery: 0,
+      total: 0,
+      freeDeliveryThreshold: 2000,
+    });
     window.location.hash = '#account';
     setToastMessage('Signed out successfully.');
   };
@@ -248,6 +302,60 @@ function App() {
     }
   };
 
+  // Server-backed Cart Action Handlers
+  const handleAddToCart = async (productId, quantity = 1) => {
+    if (!currentUser) {
+      setToastMessage('Sign in to add products to your cart.');
+      window.location.hash = '#auth';
+      return false;
+    }
+
+    const token = getStoredToken();
+    try {
+      const updated = await addToCartApi(productId, quantity, token);
+      setCartData(updated);
+      setToastMessage('Added to cart.');
+      return true;
+    } catch (err) {
+      console.error('Failed to add to cart:', err);
+      setToastMessage(err.message || 'Unable to add this product to your cart.');
+      return false;
+    }
+  };
+
+  const handleUpdateCartQuantity = async (productId, newQuantity) => {
+    if (!currentUser || newQuantity < 1) return;
+    const token = getStoredToken();
+    setUpdatingCartItemId(productId);
+
+    try {
+      const updated = await updateCartItemApi(productId, newQuantity, token);
+      setCartData(updated);
+    } catch (err) {
+      console.error('Failed to update cart quantity:', err);
+      setToastMessage(err.message || 'Unable to update quantity.');
+    } finally {
+      setUpdatingCartItemId(null);
+    }
+  };
+
+  const handleRemoveFromCart = async (productId) => {
+    if (!currentUser) return;
+    const token = getStoredToken();
+    setUpdatingCartItemId(productId);
+
+    try {
+      const updated = await removeCartItemApi(productId, token);
+      setCartData(updated);
+      setToastMessage('Removed from cart.');
+    } catch (err) {
+      console.error('Failed to remove from cart:', err);
+      setToastMessage(err.message || 'Unable to remove item.');
+    } finally {
+      setUpdatingCartItemId(null);
+    }
+  };
+
   // Price Alert handlers
   const handleSetPriceAlert = (productId, targetPrice) => {
     const numericId = Number(productId);
@@ -277,39 +385,6 @@ function App() {
     setToastMessage('Price tracking stopped.');
   };
 
-  // Cart management handlers
-  const handleAddToCart = (productId) => {
-    const numericId = Number(productId);
-    setCartItems((prev) => {
-      const existing = prev.find((item) => item.productId === numericId);
-      if (existing) {
-        return prev.map((item) =>
-          item.productId === numericId
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { productId: numericId, quantity: 1 }];
-    });
-    setToastMessage('Added to cart.');
-  };
-
-  const handleUpdateCartQuantity = (productId, newQuantity) => {
-    const numericId = Number(productId);
-    if (newQuantity < 1) return;
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.productId === numericId ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  };
-
-  const handleRemoveFromCart = (productId) => {
-    const numericId = Number(productId);
-    setCartItems((prev) => prev.filter((item) => item.productId !== numericId));
-    setToastMessage('Removed from cart.');
-  };
-
   // Order placement handler: Creates persistent order record and clears cart
   const handlePlaceOrder = (orderDetails) => {
     const orderId = `SK${1001 + orders.length}`;
@@ -319,7 +394,7 @@ function App() {
       items: orderDetails.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice: item.product?.price || 0,
+        unitPrice: item.product?.price || item.unitPrice || 0,
       })),
       customer: orderDetails.customer,
       shippingAddress: orderDetails.shippingAddress,
@@ -334,13 +409,34 @@ function App() {
 
     setOrders((prev) => [newOrder, ...prev]);
     setLastOrder(newOrder);
-    setCartItems([]);
+
+    // Clear server cart if user is authenticated
+    const token = getStoredToken();
+    if (currentUser && token) {
+      clearCartApi(token)
+        .then((cleared) => setCartData(cleared))
+        .catch(() => {});
+    }
+
     setToastMessage('Order placed successfully.');
   };
 
-  // Compute active counts for Navbar badges
-  const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  // Compute active counts for Navbar badges (SUM of all quantities)
+  const totalCartCount = (cartData?.items || []).reduce((sum, item) => sum + item.quantity, 0);
   const activeAlertCount = priceAlerts.filter((a) => a.isActive).length;
+
+  // Resolved cartItems for Checkout compatibility
+  const checkoutCartItems = (cartData?.items || []).map((item) => ({
+    productId: item.productId,
+    quantity: item.quantity,
+    product: {
+      id: item.productId,
+      name: item.name,
+      category: item.category,
+      price: item.unitPrice,
+      image: item.image,
+    },
+  }));
 
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-[#222222] font-sans antialiased flex flex-col relative">
@@ -400,13 +496,18 @@ function App() {
           />
         ) : routeInfo.name === 'cart' ? (
           <Cart
-            cartItems={cartItems}
+            cartData={cartData}
+            currentUser={currentUser}
+            loading={cartLoading}
+            error={cartError}
+            onRetry={fetchCart}
             onUpdateQuantity={handleUpdateCartQuantity}
             onRemoveItem={handleRemoveFromCart}
+            updatingItemId={updatingCartItemId}
           />
         ) : routeInfo.name === 'checkout' ? (
           <Checkout
-            cartItems={cartItems}
+            cartItems={checkoutCartItems}
             onPlaceOrder={handlePlaceOrder}
           />
         ) : routeInfo.name === 'order-success' ? (
