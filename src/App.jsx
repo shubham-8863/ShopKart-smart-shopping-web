@@ -30,6 +30,10 @@ import {
   clearCart as clearCartApi,
   createOrder as createOrderApi,
   getOrders as getOrdersApi,
+  getPriceAlerts as getPriceAlertsApi,
+  createPriceAlert as createPriceAlertApi,
+  updatePriceAlert as updatePriceAlertApi,
+  deletePriceAlert as deletePriceAlertApi,
 } from './services/api';
 
 // Helper to parse hash route information
@@ -102,8 +106,10 @@ function App() {
   // Server-backed Wishlist product IDs state [1, 5, 8]
   const [wishlistIds, setWishlistIds] = useState([]);
 
-  // Price tracking alerts state [{ productId: 1, targetPrice: 27000, isActive: true }]
+  // Server-backed Price Alerts state
   const [priceAlerts, setPriceAlerts] = useState([]);
+  const [priceAlertsLoading, setPriceAlertsLoading] = useState(false);
+  const [priceAlertsError, setPriceAlertsError] = useState(null);
 
   // Server-backed Order history collection
   const [orders, setOrders] = useState([]);
@@ -183,7 +189,27 @@ function App() {
       });
   }, [currentUser]);
 
-  // Fetch server-backed Wishlist, Cart, and Orders when authenticated user changes
+  // Fetch Price Alerts helper
+  const fetchPriceAlerts = useCallback(() => {
+    const token = getStoredToken();
+    if (!token || !currentUser) return;
+
+    setPriceAlertsLoading(true);
+    setPriceAlertsError(null);
+
+    getPriceAlertsApi(token)
+      .then((data) => {
+        setPriceAlerts(data);
+        setPriceAlertsLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching price alerts:', err);
+        setPriceAlertsError(err.message || 'Unable to load price alerts.');
+        setPriceAlertsLoading(false);
+      });
+  }, [currentUser]);
+
+  // Fetch server-backed Wishlist, Cart, Orders, and Price Alerts when authenticated user changes
   useEffect(() => {
     const token = getStoredToken();
     if (currentUser && token) {
@@ -205,6 +231,9 @@ function App() {
 
       // 3. Load Orders
       fetchOrders();
+
+      // 4. Load Price Alerts
+      fetchPriceAlerts();
     } else if (!currentUser) {
       setWishlistIds([]);
       setCartData({
@@ -219,9 +248,12 @@ function App() {
       setOrders([]);
       setOrdersLoading(false);
       setOrdersError(null);
+      setPriceAlerts([]);
+      setPriceAlertsLoading(false);
+      setPriceAlertsError(null);
       setLastOrder(null);
     }
-  }, [currentUser, fetchCart, fetchOrders]);
+  }, [currentUser, fetchCart, fetchOrders, fetchPriceAlerts]);
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
@@ -232,16 +264,21 @@ function App() {
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  // Route change listener
+  // Route change listener: refresh price alerts when navigating to #price-alerts
   useEffect(() => {
     const handleHashChange = () => {
-      setRouteInfo(getRouteInfo());
+      const newRoute = getRouteInfo();
+      setRouteInfo(newRoute);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (newRoute.name === 'price-alerts' && currentUser) {
+        fetchPriceAlerts();
+      }
     };
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [currentUser, fetchPriceAlerts]);
 
   // Auth Action Handlers
   const handleAuthSuccess = ({ user, token }) => {
@@ -263,6 +300,7 @@ function App() {
       freeDeliveryThreshold: 2000,
     });
     setOrders([]);
+    setPriceAlerts([]);
     setLastOrder(null);
     window.location.hash = '#account';
     setToastMessage('Signed out successfully.');
@@ -322,7 +360,6 @@ function App() {
         }
       } catch (err) {
         console.error('Failed to sync wishlist with backend:', err);
-        // Revert optimistic update on server error
         setWishlistIds((prev) => {
           if (isCurrentlyWishlisted) {
             return [...prev, numericId];
@@ -389,33 +426,43 @@ function App() {
     }
   };
 
-  // Price Alert handlers
-  const handleSetPriceAlert = (productId, targetPrice) => {
-    const numericId = Number(productId);
-    const numericTarget = Number(targetPrice);
-    setPriceAlerts((prev) => {
-      const existing = prev.find((a) => a.productId === numericId);
-      if (existing) {
-        setToastMessage('Price alert updated.');
-        return prev.map((a) =>
-          a.productId === numericId
-            ? { ...a, targetPrice: numericTarget, isActive: true }
-            : a
-        );
-      } else {
-        setToastMessage('Price alert set.');
-        return [
-          ...prev,
-          { productId: numericId, targetPrice: numericTarget, isActive: true },
-        ];
-      }
-    });
+  // Server-backed Price Alert Handlers
+  const handleSetPriceAlert = async (productId, targetPrice) => {
+    if (!currentUser) {
+      setToastMessage('Sign in to track prices.');
+      window.location.hash = '#auth';
+      return false;
+    }
+
+    const token = getStoredToken();
+    try {
+      await createPriceAlertApi(productId, targetPrice, token);
+      setToastMessage('Price alert set.');
+      fetchPriceAlerts();
+      return true;
+    } catch (err) {
+      console.error('Failed to set price alert:', err);
+      setToastMessage(err.message || 'Unable to set price alert.');
+      throw err;
+    }
   };
 
-  const handleRemovePriceAlert = (productId) => {
-    const numericId = Number(productId);
-    setPriceAlerts((prev) => prev.filter((a) => a.productId !== numericId));
-    setToastMessage('Price tracking stopped.');
+  const handleRemovePriceAlert = async (productId) => {
+    if (!currentUser) return;
+    const token = getStoredToken();
+
+    // Optimistically filter out
+    setPriceAlerts((prev) => prev.filter((a) => a.productId !== Number(productId)));
+
+    try {
+      await deletePriceAlertApi(productId, token);
+      setToastMessage('Price tracking stopped.');
+      fetchPriceAlerts();
+    } catch (err) {
+      console.error('Failed to delete price alert:', err);
+      setToastMessage(err.message || 'Unable to stop price tracking.');
+      fetchPriceAlerts();
+    }
   };
 
   // Server-backed Order Placement Handler
@@ -447,9 +494,9 @@ function App() {
     return createdOrder;
   };
 
-  // Compute active counts for Navbar badges
+  // Compute active counts for Navbar badges (count only ACTIVE, untriggered alerts)
   const totalCartCount = (cartData?.items || []).reduce((sum, item) => sum + item.quantity, 0);
-  const activeAlertCount = priceAlerts.filter((a) => a.isActive).length;
+  const activeAlertCount = priceAlerts.filter((a) => a.isActive && !a.isTriggered && !a.targetReached).length;
 
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-[#222222] font-sans antialiased flex flex-col relative">
@@ -482,6 +529,7 @@ function App() {
             priceAlerts={priceAlerts}
             onSetPriceAlert={handleSetPriceAlert}
             onRemovePriceAlert={handleRemovePriceAlert}
+            currentUser={currentUser}
           />
         ) : routeInfo.name === 'products' ? (
           <Products
@@ -535,6 +583,10 @@ function App() {
         ) : routeInfo.name === 'price-alerts' ? (
           <PriceAlerts
             priceAlerts={priceAlerts}
+            currentUser={currentUser}
+            loading={priceAlertsLoading}
+            error={priceAlertsError}
+            onRetry={fetchPriceAlerts}
             onSetPriceAlert={handleSetPriceAlert}
             onRemovePriceAlert={handleRemovePriceAlert}
           />

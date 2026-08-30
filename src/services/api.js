@@ -143,6 +143,45 @@ export async function getProductById(id, signal) {
 }
 
 /* ==========================================================================
+   Reviews & Ratings API
+   ========================================================================== */
+
+/**
+ * Submit a customer star rating for a verified purchase: POST /api/reviews
+ * @param {Object} payload - { productId, rating, orderId }
+ * @param {string} token - JWT Token
+ */
+export async function createReview(payload, token) {
+  const result = await request('/reviews', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return result.data;
+}
+
+/**
+ * Fetch product ratings breakdown & user eligibility: GET /api/products/:productId/reviews
+ * @param {number|string} productId - Product ID
+ * @param {string} [token] - Optional JWT Token
+ * @param {AbortSignal} [signal] - Optional abort signal
+ */
+export async function getProductReviews(productId, token, signal) {
+  const headers = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const result = await request(`/products/${productId}/reviews`, {
+    headers,
+    signal,
+  });
+  return result.data;
+}
+
+/* ==========================================================================
    Authentication API (Register, Login, Current User)
    ========================================================================== */
 
@@ -409,6 +448,77 @@ export async function getOrderById(id, token, signal) {
 }
 
 /* ==========================================================================
+   Price Alerts API (Authenticated)
+   ========================================================================== */
+
+/**
+ * Fetch authenticated user's price alerts: GET /api/price-alerts
+ * @param {string} token - JWT Token
+ * @param {AbortSignal} signal - Optional abort signal
+ */
+export async function getPriceAlerts(token, signal) {
+  const result = await request('/price-alerts', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result.data || [];
+}
+
+/**
+ * Set or update a price alert: POST /api/price-alerts
+ * @param {number|string} productId - Product ID
+ * @param {number} targetPrice - Target price in INR
+ * @param {string} token - JWT Token
+ */
+export async function createPriceAlert(productId, targetPrice, token) {
+  const result = await request('/price-alerts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      productId: Number(productId),
+      targetPrice: Number(targetPrice),
+    }),
+  });
+  return result.data;
+}
+
+/**
+ * Update target price or active state: PATCH /api/price-alerts/:productId
+ * @param {number|string} productId - Product ID
+ * @param {Object} payload - { targetPrice, isActive }
+ * @param {string} token - JWT Token
+ */
+export async function updatePriceAlert(productId, payload, token) {
+  const result = await request(`/price-alerts/${productId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return result.data;
+}
+
+/**
+ * Stop tracking a product: DELETE /api/price-alerts/:productId
+ * @param {number|string} productId - Product ID
+ * @param {string} token - JWT Token
+ */
+export async function deletePriceAlert(productId, token) {
+  const result = await request(`/price-alerts/${productId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return result;
+}
+
+/* ==========================================================================
    Local Storage Token Helpers
    ========================================================================== */
 
@@ -430,6 +540,8 @@ export default {
   getCategories,
   getProducts,
   getProductById,
+  createReview,
+  getProductReviews,
   registerUser,
   loginUser,
   getCurrentUser,
@@ -446,6 +558,10 @@ export default {
   createOrder,
   getOrders,
   getOrderById,
+  getPriceAlerts,
+  createPriceAlert,
+  updatePriceAlert,
+  deletePriceAlert,
   getStoredToken,
   setStoredToken,
   removeStoredToken,

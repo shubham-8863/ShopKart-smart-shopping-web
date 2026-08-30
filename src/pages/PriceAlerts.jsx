@@ -8,13 +8,20 @@ import {
   Trash2, 
   ExternalLink,
   Check,
-  X
+  X,
+  LogIn,
+  AlertCircle,
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
-import products from '../data/products';
 import { formatPrice } from '../utils/pricing';
 
 export default function PriceAlerts({
   priceAlerts = [],
+  currentUser = null,
+  loading = false,
+  error = null,
+  onRetry,
   onSetPriceAlert,
   onRemovePriceAlert,
 }) {
@@ -22,49 +29,98 @@ export default function PriceAlerts({
   const [editTargetInput, setEditTargetInput] = useState('');
   const [editError, setEditError] = useState('');
 
-  // Resolve active alerts against mock product dataset
-  const activeAlerts = priceAlerts
-    .map((alert) => ({
-      ...alert,
-      product: products.find((p) => p.id === Number(alert.productId)),
-    }))
-    .filter((a) => Boolean(a.product && a.isActive));
+  /* ==========================================================================
+     1. Unauthenticated Prompt
+     ========================================================================== */
+  if (!currentUser) {
+    return (
+      <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[65vh] flex items-center justify-center text-center">
+        <div className="max-w-md mx-auto px-6">
+          <p className="text-xs sm:text-[13px] font-medium tracking-[0.15em] uppercase text-[#D86F5C] mb-3">
+            Price Tracking
+          </p>
+          <div className="w-14 h-14 rounded-full bg-white border border-black/10 flex items-center justify-center mx-auto mb-5 text-[#D86F5C] shadow-xs">
+            <Bell className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#222222]">
+            Sign in to track prices.
+          </h1>
+          <p className="text-sm sm:text-base text-[#6B6B6B] mt-2 leading-relaxed">
+            Set a target price and keep the products you care about on your radar.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="#auth"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium transition duration-150 active:scale-95 shadow-xs"
+            >
+              <LogIn className="w-4 h-4 text-[#D86F5C]" />
+              <span>Sign in</span>
+            </a>
+            <a
+              href="#products"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-black/10 bg-white hover:bg-stone-50 text-[#222222] text-sm font-medium transition duration-150"
+            >
+              <span>Explore Products</span>
+              <ArrowRight className="w-4 h-4 text-[#6B6B6B]" />
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const handleStartEdit = (alert) => {
-    setEditingProductId(alert.product.id);
-    setEditTargetInput(alert.targetPrice.toString());
-    setEditError('');
-  };
+  /* ==========================================================================
+     2. Error State
+     ========================================================================== */
+  if (error) {
+    return (
+      <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[65vh] flex items-center justify-center text-center">
+        <div className="max-w-md mx-auto px-6">
+          <div className="w-14 h-14 rounded-full bg-rose-50 border border-rose-200/60 flex items-center justify-center mx-auto mb-4 text-rose-600">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#222222]">
+            Unable to load your price alerts.
+          </h1>
+          <p className="text-sm text-[#6B6B6B] mt-2">
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium transition duration-150 active:scale-95 shadow-xs"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Retry</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const handleCancelEdit = () => {
-    setEditingProductId(null);
-    setEditTargetInput('');
-    setEditError('');
-  };
+  /* ==========================================================================
+     3. Loading Skeleton State
+     ========================================================================== */
+  if (loading) {
+    return (
+      <div className="bg-[#FAF8F4] py-10 sm:py-16">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 space-y-6">
+          <div className="h-4 bg-stone-200/70 rounded w-32 animate-pulse" />
+          <div className="h-10 bg-stone-200/70 rounded w-72 animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white rounded-2xl border border-black/5 p-6 h-64 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const handleSaveEdit = (e, product) => {
-    e.preventDefault();
-    const target = Number(editTargetInput);
-
-    if (!editTargetInput.trim() || isNaN(target) || target <= 0) {
-      setEditError('Please enter a valid numeric target price.');
-      return;
-    }
-
-    if (target >= product.price) {
-      setEditError('Target price must be below current price.');
-      return;
-    }
-
-    if (onSetPriceAlert) {
-      onSetPriceAlert(product.id, target);
-    }
-    setEditingProductId(null);
-    setEditError('');
-  };
-
-  // Empty Price Alerts State
-  if (activeAlerts.length === 0) {
+  /* ==========================================================================
+     4. Empty State
+     ========================================================================== */
+  if (priceAlerts.length === 0) {
     return (
       <div className="bg-[#FAF8F4] py-20 sm:py-28 min-h-[65vh] flex items-center justify-center text-center">
         <div className="max-w-md mx-auto px-6">
@@ -92,6 +148,44 @@ export default function PriceAlerts({
     );
   }
 
+  // Edit Handlers
+  const handleStartEdit = (alert) => {
+    setEditingProductId(alert.productId);
+    setEditTargetInput(alert.targetPrice.toString());
+    setEditError('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProductId(null);
+    setEditTargetInput('');
+    setEditError('');
+  };
+
+  const handleSaveEdit = async (e, alert) => {
+    e.preventDefault();
+    const target = Number(editTargetInput);
+
+    if (!editTargetInput.trim() || isNaN(target) || target <= 0) {
+      setEditError('Please enter a valid numeric target price.');
+      return;
+    }
+
+    if (target >= alert.currentPrice) {
+      setEditError('Target price must be below current price.');
+      return;
+    }
+
+    if (onSetPriceAlert) {
+      const success = await onSetPriceAlert(alert.productId, target);
+      if (success) {
+        setEditingProductId(null);
+        setEditError('');
+      }
+    }
+  };
+
+  const activeCount = priceAlerts.filter((a) => a.isActive).length;
+
   return (
     <div className="bg-[#FAF8F4] py-10 sm:py-16">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
@@ -112,34 +206,37 @@ export default function PriceAlerts({
 
           <div className="text-xs sm:text-sm font-medium text-[#6B6B6B] shrink-0">
             <span>
-              {activeAlerts.length} {activeAlerts.length === 1 ? 'product' : 'products'} being tracked
+              {activeCount} {activeCount === 1 ? 'product' : 'products'} actively tracked
             </span>
           </div>
         </div>
 
         {/* Tracked Products Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-          {activeAlerts.map((alert) => {
-            const { product } = alert;
-            const diff = product.price - alert.targetPrice;
-            const discountPct = Math.round((diff / product.price) * 100);
-            const isEditingThis = editingProductId === product.id;
+          {priceAlerts.map((alert) => {
+            const diff = alert.currentPrice - alert.targetPrice;
+            const isTriggered = alert.isTriggered || alert.targetReached;
+            const isActive = alert.isActive && !isTriggered;
+            const isEditingThis = editingProductId === alert.productId;
+            const dropPct = Math.round(((alert.currentPrice - alert.targetPrice) / alert.currentPrice) * 100);
 
             return (
               <div
-                key={product.id}
-                className="bg-white rounded-2xl border border-black/5 p-6 sm:p-7 shadow-xs flex flex-col justify-between text-left relative group transition hover:shadow-md"
+                key={alert.productId}
+                className={`bg-white rounded-2xl border ${
+                  isTriggered ? 'border-amber-200 bg-amber-50/20' : 'border-black/5'
+                } p-6 sm:p-7 shadow-xs flex flex-col justify-between text-left relative group transition hover:shadow-md`}
               >
                 <div>
                   {/* Top Row: Thumbnail, Title, Category */}
                   <div className="flex items-start gap-4 pb-4 border-b border-black/[0.05]">
                     <a
-                      href={`#product/${product.id}`}
+                      href={`#product/${alert.productId}`}
                       className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0 border border-black/5"
                     >
                       <img
-                        src={product.image}
-                        alt={product.name}
+                        src={alert.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80'}
+                        alt={alert.name}
                         className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
                       />
                     </a>
@@ -147,23 +244,30 @@ export default function PriceAlerts({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <p className="text-[11px] font-medium tracking-wider uppercase text-[#D86F5C]">
-                          {product.category}
+                          {alert.category || 'Product'}
                         </p>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          Active
-                        </span>
+                        {isTriggered ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-full shrink-0">
+                            <Sparkles className="w-3 h-3 text-amber-600" />
+                            Target Reached
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Active
+                          </span>
+                        )}
                       </div>
 
                       <a
-                        href={`#product/${product.id}`}
+                        href={`#product/${alert.productId}`}
                         className="text-base sm:text-lg font-semibold text-[#222222] hover:text-[#D86F5C] line-clamp-1 transition-colors leading-snug"
                       >
-                        {product.name}
+                        {alert.name}
                       </a>
 
                       <p className="text-xs text-[#6B6B6B] mt-1">
-                        Current: <strong>{formatPrice(product.price)}</strong>
+                        Current Price: <strong>{formatPrice(alert.currentPrice)}</strong>
                       </p>
                     </div>
                   </div>
@@ -173,7 +277,7 @@ export default function PriceAlerts({
                     {isEditingThis ? (
                       /* Inline Target Price Edit Form */
                       <form
-                        onSubmit={(e) => handleSaveEdit(e, product)}
+                        onSubmit={(e) => handleSaveEdit(e, alert)}
                         className="p-3.5 rounded-xl bg-[#FAF8F4] border border-black/[0.06] space-y-3"
                       >
                         <div>
@@ -216,8 +320,18 @@ export default function PriceAlerts({
                           </button>
                         </div>
                       </form>
+                    ) : isTriggered ? (
+                      /* Triggered Summary */
+                      <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/60 text-xs space-y-1">
+                        <p className="font-semibold text-amber-900">
+                          Target Price Reached!
+                        </p>
+                        <p className="text-[#6B6B6B]">
+                          Your target was {formatPrice(alert.targetPrice)}. The current price is {formatPrice(alert.currentPrice)}.
+                        </p>
+                      </div>
                     ) : (
-                      /* Target Price Summary & Visual Bar */
+                      /* Active Target Summary */
                       <div>
                         <div className="flex items-baseline justify-between text-left mb-1.5">
                           <span className="text-xs text-[#6B6B6B]">Your Target Price</span>
@@ -233,7 +347,7 @@ export default function PriceAlerts({
                             style={{
                               width: `${Math.min(
                                 100,
-                                Math.max(10, ((alert.targetPrice / product.price) * 100))
+                                Math.max(10, (alert.targetPrice / alert.currentPrice) * 100)
                               )}%`,
                             }}
                           />
@@ -241,7 +355,7 @@ export default function PriceAlerts({
 
                         <div className="flex items-center justify-between text-[11px] text-[#6B6B6B]">
                           <span>
-                            Waiting for: <strong>{formatPrice(diff)} less</strong> ({discountPct}% drop)
+                            Target is <strong>{formatPrice(diff)} below</strong> current price ({dropPct}%)
                           </span>
                           <span>Goal: {formatPrice(alert.targetPrice)}</span>
                         </div>
@@ -253,7 +367,7 @@ export default function PriceAlerts({
                 {/* Bottom Actions */}
                 <div className="pt-3.5 border-t border-black/[0.05] flex items-center justify-between text-xs font-medium">
                   <a
-                    href={`#product/${product.id}`}
+                    href={`#product/${alert.productId}`}
                     className="text-[#222222] hover:text-[#D86F5C] inline-flex items-center gap-1 transition"
                   >
                     <span>View product</span>
@@ -268,19 +382,19 @@ export default function PriceAlerts({
                         className="text-[#222222] hover:text-[#D86F5C] inline-flex items-center gap-1 transition"
                       >
                         <Edit2 className="w-3 h-3" />
-                        <span>Edit</span>
+                        <span>{isTriggered ? 'Set new target' : 'Edit'}</span>
                       </button>
                     )}
 
                     <button
                       type="button"
                       onClick={() =>
-                        onRemovePriceAlert && onRemovePriceAlert(product.id)
+                        onRemovePriceAlert && onRemovePriceAlert(alert.productId)
                       }
                       className="text-[#6B6B6B] hover:text-rose-600 inline-flex items-center gap-1 transition"
                     >
                       <Trash2 className="w-3 h-3" />
-                      <span>Stop tracking</span>
+                      <span>{isTriggered ? 'Dismiss' : 'Stop tracking'}</span>
                     </button>
                   </div>
                 </div>
