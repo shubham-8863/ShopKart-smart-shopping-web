@@ -21,9 +21,9 @@ ON DUPLICATE KEY UPDATE name=VALUES(name), slug=VALUES(slug), description=VALUES
 -- Admin credentials:    admin@shopkart.com / admin123
 -- ============================================================================
 INSERT INTO users (id, full_name, email, password_hash, phone, address_street, address_city, address_state, address_pincode, role) VALUES
-(1, 'Shubham Saini', 'shubham@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '+91 98765 43210', '21 MG Road', 'Jaipur', 'Rajasthan', '302001', 'customer'),
-(2, 'ShopKart Admin', 'admin@shopkart.com', '$2a$10$K9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWz', '+91 99999 88888', '1 Innovation Tower, Indiranagar', 'Bengaluru', 'Karnataka', '560038', 'admin')
-ON DUPLICATE KEY UPDATE full_name=VALUES(full_name), phone=VALUES(phone);
+(1, 'Shubham Saini', 'shubham@example.com', '$2b$10$rzFrwmzFuDmk7wh1H.4/2.o./s55QV/Gp4H8yssAjwIBRE/.Z.4PC', '+91 98765 43210', '21 MG Road', 'Jaipur', 'Rajasthan', '302001', 'customer'),
+(2, 'ShopKart Admin', 'admin@shopkart.com', '$2b$10$5EuAlDwCJouHK.UA6RmYKeFqIWBWT6gVsQ9tPnoXL2UGL/rxNbYCq', '+91 99999 88888', '1 Innovation Tower, Indiranagar', 'Bengaluru', 'Karnataka', '560038', 'admin')
+ON DUPLICATE KEY UPDATE full_name=VALUES(full_name), password_hash=VALUES(password_hash), phone=VALUES(phone);
 
 -- ============================================================================
 -- 3. SEED PRODUCTS (16 Items matching src/data/products.js)
