@@ -171,7 +171,7 @@ export async function loginUser(payload) {
 }
 
 /**
- * Get current authenticated user profile: GET /api/auth/me
+ * Get current authenticated user session identity: GET /api/auth/me
  * @param {string} token - JWT Token
  * @param {AbortSignal} signal - Optional abort signal
  */
@@ -183,6 +183,41 @@ export async function getCurrentUser(token, signal) {
     signal,
   });
   return result.data?.user;
+}
+
+/* ==========================================================================
+   User Account & Profile API (Authenticated)
+   ========================================================================== */
+
+/**
+ * Fetch current authenticated user's profile and default address: GET /api/users/me
+ * @param {string} token - JWT Token
+ * @param {AbortSignal} signal - Optional abort signal
+ */
+export async function getCurrentUserProfile(token, signal) {
+  const result = await request('/users/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result.data;
+}
+
+/**
+ * Update current authenticated user's profile and default address: PUT /api/users/me
+ * @param {Object} payload - { fullName, email, phone, address, city, state, pincode }
+ * @param {string} token - JWT Token
+ */
+export async function updateCurrentUserProfile(payload, token) {
+  const result = await request('/users/me', {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return result.data;
 }
 
 /* ==========================================================================
@@ -347,6 +382,8 @@ export default {
   registerUser,
   loginUser,
   getCurrentUser,
+  getCurrentUserProfile,
+  updateCurrentUserProfile,
   getWishlist,
   addToWishlist,
   removeFromWishlist,

@@ -484,6 +484,7 @@ function App() {
               wishlistIds={wishlistIds}
               priceAlerts={priceAlerts}
               onShowToast={setToastMessage}
+              onUpdateCurrentUser={setCurrentUser}
             />
           ) : (
             <Auth onAuthSuccess={handleAuthSuccess} />
@@ -535,6 +536,7 @@ function App() {
             wishlistIds={wishlistIds}
             priceAlerts={priceAlerts}
             onShowToast={setToastMessage}
+            onUpdateCurrentUser={setCurrentUser}
           />
         ) : (
           <>
