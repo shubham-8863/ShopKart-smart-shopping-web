@@ -7,6 +7,8 @@ export const products = [
     description: "Wireless noise cancelling headphones with industry-leading audio clarity",
     price: 29990,
     rating: 4.7,
+    stock: 20,
+    inStock: true,
     priceStatus: "8% below average",
     image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -24,6 +26,8 @@ export const products = [
     description: "Everyday full-grain leather backpack designed for modern commuters",
     price: 5499,
     rating: 4.6,
+    stock: 25,
+    inStock: true,
     priceStatus: "5% below average",
     image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -41,6 +45,8 @@ export const products = [
     description: "Warm architectural table lamp crafted with matte ceramic finish",
     price: 2499,
     rating: 4.5,
+    stock: 20,
+    inStock: true,
     priceStatus: "12% below average",
     image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -58,6 +64,8 @@ export const products = [
     description: "Nourishing botanical essentials for radiant, balanced skin",
     price: 1899,
     rating: 4.8,
+    stock: 40,
+    inStock: true,
     priceStatus: "7% below average",
     image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -76,6 +84,8 @@ export const products = [
     description: "Active noise cancellation with adaptive audio and spatial sound",
     price: 22900,
     rating: 4.8,
+    stock: 35,
+    inStock: true,
     priceStatus: "6% below average",
     image: "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -93,6 +103,8 @@ export const products = [
     description: "Precision ergonomic wireless mouse with quiet electromagnetic scroll",
     price: 8995,
     rating: 4.6,
+    stock: 25,
+    inStock: true,
     priceStatus: "10% below average",
     image: "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -110,6 +122,8 @@ export const products = [
     description: "Glare-free 6.8-inch display with adjustable warm light for reading",
     price: 14999,
     rating: 4.5,
+    stock: 15,
+    inStock: true,
     priceStatus: "Near average",
     image: "https://images.unsplash.com/photo-1592496001020-d31bd830651f?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -128,6 +142,8 @@ export const products = [
     description: "Timeless relaxed-fit denim jacket made from 100% organic cotton",
     price: 3499,
     rating: 4.4,
+    stock: 20,
+    inStock: true,
     priceStatus: "4% below average",
     image: "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -145,6 +161,8 @@ export const products = [
     description: "Minimal low-top sneakers crafted with premium Italian leather",
     price: 4999,
     rating: 4.7,
+    stock: 30,
+    inStock: true,
     priceStatus: "9% below average",
     image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -162,6 +180,8 @@ export const products = [
     description: "Lightweight structured crossbody bag with brass hardware accents",
     price: 2199,
     rating: 4.3,
+    stock: 18,
+    inStock: true,
     priceStatus: "Near average",
     image: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -180,6 +200,8 @@ export const products = [
     description: "Solid oak accent table with tapered legs and warm satin finish",
     price: 6899,
     rating: 4.6,
+    stock: 12,
+    inStock: true,
     priceStatus: "8% below average",
     image: "https://images.unsplash.com/photo-1532323544230-7191fd51bc1b?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -197,6 +219,8 @@ export const products = [
     description: "Pair of breathable pure European linen pillow covers with feather insert",
     price: 1499,
     rating: 4.4,
+    stock: 45,
+    inStock: true,
     priceStatus: "3% below average",
     image: "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -214,6 +238,8 @@ export const products = [
     description: "Modular concrete and walnut desk tray set for streamlined workspaces",
     price: 1299,
     rating: 4.2,
+    stock: 22,
+    inStock: true,
     priceStatus: "6% below average",
     image: "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -232,6 +258,8 @@ export const products = [
     description: "Triple hyaluronic acid formula for deep, lightweight hydration",
     price: 1249,
     rating: 4.9,
+    stock: 50,
+    inStock: true,
     priceStatus: "11% below average",
     image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -249,6 +277,8 @@ export const products = [
     description: "pH-balanced botanical cleanser that purifies without drying",
     price: 899,
     rating: 4.5,
+    stock: 35,
+    inStock: true,
     priceStatus: "4% below average",
     image: "https://images.unsplash.com/photo-1556228722-d0b5d0383188?auto=format&fit=crop&w=800&q=80",
     specifications: {
@@ -266,6 +296,8 @@ export const products = [
     description: "Ceramide-rich soothing cream designed to strengthen the skin barrier",
     price: 1450,
     rating: 4.7,
+    stock: 28,
+    inStock: true,
     priceStatus: "Near average",
     image: "https://images.unsplash.com/photo-1608248597359-bb436a53cb85?auto=format&fit=crop&w=800&q=80",
     specifications: {

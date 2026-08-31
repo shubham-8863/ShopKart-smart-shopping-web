@@ -339,7 +339,12 @@ export default function ProductDetails({
   const displayRating = product.rating !== null && product.rating !== undefined && product.rating > 0
     ? Number(product.rating).toFixed(1)
     : null;
-  const isProductInStock = typeof product.stock === 'number' ? product.stock > 0 : Boolean(product.inStock);
+  const stockCount = typeof product.stock === 'number'
+    ? product.stock
+    : (product.stock !== undefined && product.stock !== null && !isNaN(Number(product.stock)))
+      ? Number(product.stock)
+      : (product.inStock ? 1 : 0);
+  const isProductInStock = stockCount > 0 || Boolean(product.inStock);
 
   return (
     <div className="bg-[#FAF8F4] py-8 sm:py-12">
@@ -409,7 +414,7 @@ export default function ProductDetails({
                 <span className="text-xs text-[#6B6B6B]">•</span>
                 <span className="text-xs text-[#6B6B6B]">
                   {isProductInStock ? (
-                    <span className="text-emerald-700 font-medium">In Stock ({product.stock} available)</span>
+                    <span className="text-emerald-700 font-medium">In Stock ({stockCount} available)</span>
                   ) : (
                     <span className="text-rose-600 font-medium">Out of Stock</span>
                   )}
