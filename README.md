@@ -8,9 +8,7 @@ A full-stack e-commerce platform featuring dynamic product discovery, server-aut
 
 ShopKart is built to demonstrate end-to-end e-commerce engineering with an emphasis on data integrity, immutable financial transactions, and secure role separation. It combines a responsive React frontend with an Express REST backend backed by relational MySQL.
 
-- **Live Frontend**: [https://shopkart-zagj.onrender.com](https://shopkart-zagj.onrender.com)
-- **Live Backend API**: [https://shopkart-smart-shopping-web.onrender.com](https://shopkart-smart-shopping-web.onrender.com)
-- **API Health Check**: [https://shopkart-smart-shopping-web.onrender.com/api/health](https://shopkart-smart-shopping-web.onrender.com/api/health)
+- **Live demo**: [https://shopkart-zagj.onrender.com](https://shopkart-zagj.onrender.com)
 
 ---
 
