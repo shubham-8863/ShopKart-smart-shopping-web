@@ -143,6 +143,125 @@ export async function getProductById(id, signal) {
 }
 
 /* ==========================================================================
+   Admin Product Management API (Protected by JWT + Admin Role)
+   ========================================================================== */
+
+/**
+ * Fetch all catalog products (active and inactive): GET /api/admin/products
+ * @param {string} token - Admin JWT Token
+ * @param {AbortSignal} [signal] - Optional abort signal
+ */
+export async function getAdminProducts(token, signal) {
+  const result = await request('/admin/products', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result.data || [];
+}
+
+/**
+ * Create a new catalog product: POST /api/admin/products
+ * @param {Object} payload - { name, categoryId, description, price, stock, imageUrl, specifications, isActive }
+ * @param {string} token - Admin JWT Token
+ */
+export async function createAdminProduct(payload, token) {
+  const result = await request('/admin/products', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return result.data;
+}
+
+/**
+ * Update an existing catalog product: PUT /api/admin/products/:id
+ * @param {number|string} id - Product ID
+ * @param {Object} payload - { name, categoryId, description, price, stock, imageUrl, specifications, isActive }
+ * @param {string} token - Admin JWT Token
+ */
+export async function updateAdminProduct(id, payload, token) {
+  const result = await request(`/admin/products/${id}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return result.data;
+}
+
+/**
+ * Deactivate a product (soft delete): DELETE /api/admin/products/:id
+ * @param {number|string} id - Product ID
+ * @param {string} token - Admin JWT Token
+ */
+export async function deactivateAdminProduct(id, token) {
+  const result = await request(`/admin/products/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return result;
+}
+
+/* ==========================================================================
+   Admin Order Management API (Protected by JWT + Admin Role)
+   ========================================================================== */
+
+/**
+ * Fetch all customer orders: GET /api/admin/orders
+ * @param {string} token - Admin JWT Token
+ * @param {AbortSignal} [signal] - Optional abort signal
+ */
+export async function getAdminOrders(token, signal) {
+  const result = await request('/admin/orders', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result.data || [];
+}
+
+/**
+ * Fetch single order details by code or ID (Admin scope): GET /api/admin/orders/:id
+ * @param {string|number} id - Order code or numeric ID
+ * @param {string} token - Admin JWT Token
+ * @param {AbortSignal} [signal] - Optional abort signal
+ */
+export async function getAdminOrderById(id, token, signal) {
+  const result = await request(`/admin/orders/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  });
+  return result.data;
+}
+
+/**
+ * Update order lifecycle status: PATCH /api/admin/orders/:id/status
+ * @param {string|number} id - Order code or numeric ID
+ * @param {string} status - New target status ('Processing' | 'Shipped' | 'Delivered' | 'Cancelled')
+ * @param {string} token - Admin JWT Token
+ */
+export async function updateAdminOrderStatus(id, status, token) {
+  const result = await request(`/admin/orders/${id}/status`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+  return result.data;
+}
+
+/* ==========================================================================
    Reviews & Ratings API
    ========================================================================== */
 
@@ -540,6 +659,13 @@ export default {
   getCategories,
   getProducts,
   getProductById,
+  getAdminProducts,
+  createAdminProduct,
+  updateAdminProduct,
+  deactivateAdminProduct,
+  getAdminOrders,
+  getAdminOrderById,
+  updateAdminOrderStatus,
   createReview,
   getProductReviews,
   registerUser,

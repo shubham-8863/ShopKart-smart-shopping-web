@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Scale, X, ArrowRight, Plus, Star, TrendingDown, ArrowLeft } from 'lucide-react';
 import products from '../data/products';
+import { getProducts } from '../services/api';
 
 // Helper to convert camelCase keys (e.g., "skinType", "keyIngredient") to clean title strings
 function formatSpecLabel(key) {
@@ -20,12 +21,34 @@ function formatPrice(price) {
 }
 
 export default function Compare({ compareIds = [], onRemove, onClear }) {
-  // Retrieve selected product objects from dataset
+  const [dbProducts, setDbProducts] = useState([]);
+
+  useEffect(() => {
+    if (compareIds.length === 0) {
+      setDbProducts([]);
+      return;
+    }
+    let isMounted = true;
+    getProducts({ ids: compareIds.join(',') })
+      .then((data) => {
+        if (isMounted) {
+          setDbProducts(data || []);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch compared products from API:', err.message);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [compareIds]);
+
+  // Retrieve selected product objects from database or fallback dataset
   const compareProducts = useMemo(() => {
     return compareIds
-      .map((id) => products.find((p) => p.id === Number(id)))
+      .map((id) => dbProducts.find((p) => p.id === Number(id)) || products.find((p) => p.id === Number(id)))
       .filter(Boolean);
-  }, [compareIds]);
+  }, [compareIds, dbProducts]);
 
   // Dynamically collect unique specification keys across all selected products
   const allSpecKeys = useMemo(() => {

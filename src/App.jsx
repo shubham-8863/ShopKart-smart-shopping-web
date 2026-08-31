@@ -15,6 +15,7 @@ import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
 import Account from './pages/Account';
 import Auth from './pages/Auth';
+import AdminDashboard from './pages/AdminDashboard';
 import { 
   getCurrentUser, 
   getStoredToken, 
@@ -77,6 +78,12 @@ function getRouteInfo() {
   if (hash === '#account') {
     return { name: 'account', productId: null };
   }
+  if (hash === '#admin-orders') {
+    return { name: 'admin-orders', productId: null };
+  }
+  if (hash === '#admin') {
+    return { name: 'admin', productId: null };
+  }
   return { name: 'home', productId: null };
 }
 
@@ -103,26 +110,36 @@ function App() {
   const [cartError, setCartError] = useState(null);
   const [updatingCartItemId, setUpdatingCartItemId] = useState(null);
 
-  // Server-backed Wishlist product IDs state [1, 5, 8]
+  // Server-backed Wishlist State (Array of product IDs)
   const [wishlistIds, setWishlistIds] = useState([]);
 
-  // Server-backed Price Alerts state
+  // Server-backed Price Alerts State
   const [priceAlerts, setPriceAlerts] = useState([]);
   const [priceAlertsLoading, setPriceAlertsLoading] = useState(false);
   const [priceAlertsError, setPriceAlertsError] = useState(null);
 
-  // Server-backed Order history collection
+  // Server-backed Orders State
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState(null);
 
-  // Latest placed order record for OrderSuccess screen
+  // Checkout and Order Placement State
   const [lastOrder, setLastOrder] = useState(null);
 
-  // Toast feedback notification state
+  // Visual notification / toast message state
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Initial Authentication Check on app launch
+  // Auto-dismiss toast notification
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  // Restore authenticated session from stored JWT on initial mount
   useEffect(() => {
     const token = getStoredToken();
     if (!token) {
@@ -136,13 +153,11 @@ function App() {
           setCurrentUser(user);
         } else {
           removeStoredToken();
-          setCurrentUser(null);
         }
       })
       .catch((err) => {
-        console.warn('Initial session restore failed:', err.message);
+        console.warn('Session restoration failed:', err.message);
         removeStoredToken();
-        setCurrentUser(null);
       })
       .finally(() => {
         setAuthLoading(false);
@@ -251,20 +266,10 @@ function App() {
       setPriceAlerts([]);
       setPriceAlertsLoading(false);
       setPriceAlertsError(null);
-      setLastOrder(null);
     }
   }, [currentUser, fetchCart, fetchOrders, fetchPriceAlerts]);
 
-  // Auto-dismiss toast after 3 seconds
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timer = setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [toastMessage]);
-
-  // Route change listener: refresh price alerts when navigating to #price-alerts
+  // Synchronize hash routing with state
   useEffect(() => {
     const handleHashChange = () => {
       const newRoute = getRouteInfo();
@@ -280,14 +285,27 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentUser, fetchPriceAlerts]);
 
-  // Auth Action Handlers
-  const handleAuthSuccess = ({ user, token }) => {
-    setStoredToken(token);
-    setCurrentUser(user);
-    window.location.hash = '#account';
-    setToastMessage(`Welcome, ${user.fullName.split(' ')[0]}!`);
+  // Login handler
+  const handleAuthSuccess = (dataOrUser, maybeToken) => {
+    const user = dataOrUser?.user ? dataOrUser.user : dataOrUser;
+    const token = dataOrUser?.token || maybeToken;
+
+    if (token) {
+      setStoredToken(token);
+    }
+    if (user) {
+      setCurrentUser(user);
+      if (user.role === 'admin') {
+        window.location.hash = '#admin';
+      } else {
+        window.location.hash = '#account';
+      }
+      const firstName = user.fullName ? user.fullName.split(' ')[0] : 'User';
+      setToastMessage(`Welcome back, ${firstName}!`);
+    }
   };
 
+  // Logout handler
   const handleLogout = () => {
     removeStoredToken();
     setCurrentUser(null);
@@ -301,108 +319,99 @@ function App() {
     });
     setOrders([]);
     setPriceAlerts([]);
-    setLastOrder(null);
-    window.location.hash = '#account';
     setToastMessage('Signed out successfully.');
+    window.location.hash = '#';
   };
 
-  // Comparison management handlers
-  const handleToggleCompare = (productId) => {
-    const numericId = Number(productId);
-    if (compareIds.includes(numericId)) {
-      setCompareIds((prev) => prev.filter((id) => id !== numericId));
-      setToastMessage('Removed from comparison.');
-    } else {
-      if (compareIds.length >= 3) {
-        setToastMessage('You can compare up to 3 products.');
-        return;
+  // Toggle Compare handler
+  const handleToggleCompare = (id) => {
+    setCompareIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((item) => item !== id);
       }
-      setCompareIds((prev) => [...prev, numericId]);
-      setToastMessage('Added to comparison.');
-    }
+      if (prev.length >= 3) {
+        setToastMessage('Comparison limit: You can compare up to 3 products at a time.');
+        return prev;
+      }
+      return [...prev, id];
+    });
   };
 
-  const handleRemoveCompare = (productId) => {
-    const numericId = Number(productId);
-    setCompareIds((prev) => prev.filter((id) => id !== numericId));
-    setToastMessage('Removed from comparison.');
+  const handleRemoveCompare = (id) => {
+    setCompareIds((prev) => prev.filter((item) => item !== id));
   };
 
   const handleClearCompare = () => {
     setCompareIds([]);
-    setToastMessage('Comparison cleared.');
   };
 
-  // Server-backed Wishlist toggle handler
-  const handleToggleWishlist = async (productId) => {
-    const numericId = Number(productId);
+  // Toggle Wishlist handler
+  const handleToggleWishlist = async (id) => {
     const token = getStoredToken();
-    const isCurrentlyWishlisted = wishlistIds.includes(numericId);
+    if (!currentUser || !token) {
+      window.location.hash = '#auth';
+      return;
+    }
 
-    // Optimistic UI state update
-    setWishlistIds((prev) => {
+    const isCurrentlyWishlisted = wishlistIds.includes(id);
+
+    try {
       if (isCurrentlyWishlisted) {
-        return prev.filter((id) => id !== numericId);
+        setWishlistIds((prev) => prev.filter((item) => item !== id));
+        await removeFromWishlistApi(id, token);
+        setToastMessage('Removed from wishlist');
       } else {
-        return [...prev, numericId];
+        setWishlistIds((prev) => [...prev, id]);
+        await addToWishlistApi(id, token);
+        setToastMessage('Added to wishlist');
       }
-    });
-
-    setToastMessage(isCurrentlyWishlisted ? 'Removed from wishlist.' : 'Added to wishlist.');
-
-    // If authenticated, synchronize with MySQL backend
-    if (currentUser && token) {
-      try {
-        if (isCurrentlyWishlisted) {
-          await removeFromWishlistApi(numericId, token);
-        } else {
-          await addToWishlistApi(numericId, token);
-        }
-      } catch (err) {
-        console.error('Failed to sync wishlist with backend:', err);
-        setWishlistIds((prev) => {
-          if (isCurrentlyWishlisted) {
-            return [...prev, numericId];
-          } else {
-            return prev.filter((id) => id !== numericId);
-          }
-        });
-        setToastMessage('Could not update wishlist. Please try again.');
+    } catch (err) {
+      console.error('Wishlist mutation failed:', err);
+      // Revert optimistic update
+      if (isCurrentlyWishlisted) {
+        setWishlistIds((prev) => [...prev, id]);
+      } else {
+        setWishlistIds((prev) => prev.filter((item) => item !== id));
       }
+      setToastMessage(err.message || 'Unable to update wishlist.');
     }
   };
 
-  // Server-backed Cart Action Handlers
+  // Cart Handlers
   const handleAddToCart = async (productId, quantity = 1) => {
-    if (!currentUser) {
-      setToastMessage('Sign in to add products to your cart.');
+    const token = getStoredToken();
+    if (!currentUser || !token) {
       window.location.hash = '#auth';
       return false;
     }
 
-    const token = getStoredToken();
     try {
-      const updated = await addToCartApi(productId, quantity, token);
-      setCartData(updated);
-      setToastMessage('Added to cart.');
+      const updatedCart = await addToCartApi(productId, quantity, token);
+      setCartData(updatedCart);
+      setToastMessage('Added to cart');
       return true;
     } catch (err) {
-      console.error('Failed to add to cart:', err);
-      setToastMessage(err.message || 'Unable to add this product to your cart.');
+      console.error('Add to cart failed:', err);
+      setToastMessage(err.message || 'Unable to add item to cart.');
       return false;
     }
   };
 
-  const handleUpdateCartQuantity = async (productId, newQuantity) => {
-    if (!currentUser || newQuantity < 1) return;
+  const handleUpdateCartQuantity = async (productId, quantity) => {
     const token = getStoredToken();
-    setUpdatingCartItemId(productId);
+    if (!currentUser || !token) return;
 
+    setUpdatingCartItemId(productId);
     try {
-      const updated = await updateCartItemApi(productId, newQuantity, token);
-      setCartData(updated);
+      let updatedCart;
+      if (quantity <= 0) {
+        updatedCart = await removeCartItemApi(productId, token);
+      } else {
+        updatedCart = await updateCartItemApi(productId, quantity, token);
+      }
+      setCartData(updatedCart);
     } catch (err) {
-      console.error('Failed to update cart quantity:', err);
+      console.error('Update cart item failed:', err);
       setToastMessage(err.message || 'Unable to update quantity.');
     } finally {
       setUpdatingCartItemId(null);
@@ -410,113 +419,122 @@ function App() {
   };
 
   const handleRemoveFromCart = async (productId) => {
-    if (!currentUser) return;
     const token = getStoredToken();
-    setUpdatingCartItemId(productId);
+    if (!currentUser || !token) return;
 
+    setUpdatingCartItemId(productId);
     try {
-      const updated = await removeCartItemApi(productId, token);
-      setCartData(updated);
-      setToastMessage('Removed from cart.');
+      const updatedCart = await removeCartItemApi(productId, token);
+      setCartData(updatedCart);
+      setToastMessage('Item removed from cart');
     } catch (err) {
-      console.error('Failed to remove from cart:', err);
+      console.error('Remove cart item failed:', err);
       setToastMessage(err.message || 'Unable to remove item.');
     } finally {
       setUpdatingCartItemId(null);
     }
   };
 
-  // Server-backed Price Alert Handlers
+  // Price Alert Handlers
   const handleSetPriceAlert = async (productId, targetPrice) => {
-    if (!currentUser) {
-      setToastMessage('Sign in to track prices.');
+    const token = getStoredToken();
+    if (!currentUser || !token) {
       window.location.hash = '#auth';
       return false;
     }
 
-    const token = getStoredToken();
     try {
-      await createPriceAlertApi(productId, targetPrice, token);
-      setToastMessage('Price alert set.');
-      fetchPriceAlerts();
+      const result = await createPriceAlertApi(productId, targetPrice, token);
+      setPriceAlerts((prev) => {
+        const existingIdx = prev.findIndex((a) => a.productId === productId);
+        if (existingIdx >= 0) {
+          const updated = [...prev];
+          updated[existingIdx] = result;
+          return updated;
+        }
+        return [result, ...prev];
+      });
+      setToastMessage('Price alert set successfully.');
       return true;
     } catch (err) {
       console.error('Failed to set price alert:', err);
       setToastMessage(err.message || 'Unable to set price alert.');
-      throw err;
+      return false;
     }
   };
 
   const handleRemovePriceAlert = async (productId) => {
-    if (!currentUser) return;
     const token = getStoredToken();
-
-    // Optimistically filter out
-    setPriceAlerts((prev) => prev.filter((a) => a.productId !== Number(productId)));
+    if (!currentUser || !token) return;
 
     try {
       await deletePriceAlertApi(productId, token);
-      setToastMessage('Price tracking stopped.');
-      fetchPriceAlerts();
+      setPriceAlerts((prev) => prev.filter((a) => a.productId !== productId));
+      setToastMessage('Stopped tracking product.');
     } catch (err) {
-      console.error('Failed to delete price alert:', err);
-      setToastMessage(err.message || 'Unable to stop price tracking.');
-      fetchPriceAlerts();
+      console.error('Failed to remove price alert:', err);
+      setToastMessage(err.message || 'Unable to remove price alert.');
     }
   };
 
-  // Server-backed Order Placement Handler
-  const handlePlaceOrder = async (checkoutPayload) => {
-    if (!currentUser) {
-      setToastMessage('Sign in to place an order.');
+  // Order Placement Handler
+  const handlePlaceOrder = async (orderPayload) => {
+    const token = getStoredToken();
+    if (!currentUser || !token) {
       window.location.hash = '#auth';
       return;
     }
 
-    const token = getStoredToken();
-    const createdOrder = await createOrderApi(checkoutPayload, token);
-
-    // 1. Update orders state
-    setOrders((prev) => [createdOrder, ...prev]);
-    setLastOrder(createdOrder);
-
-    // 2. Clear local cart cache (database cart was cleared by transaction)
-    setCartData({
-      items: [],
-      subtotal: 0,
-      delivery: 0,
-      total: 0,
-      freeDeliveryThreshold: 2000,
-    });
-
-    setToastMessage('Order placed successfully.');
-    window.location.hash = '#order-success';
-    return createdOrder;
+    try {
+      const createdOrder = await createOrderApi(orderPayload, token);
+      setLastOrder(createdOrder);
+      // Clear Cart state locally
+      setCartData({
+        items: [],
+        subtotal: 0,
+        delivery: 0,
+        total: 0,
+        freeDeliveryThreshold: 2000,
+      });
+      // Refresh Orders
+      fetchOrders();
+      window.location.hash = '#order-success';
+    } catch (err) {
+      console.error('Order placement failed:', err);
+      throw err;
+    }
   };
 
-  // Compute active counts for Navbar badges (count only ACTIVE, untriggered alerts)
-  const totalCartCount = (cartData?.items || []).reduce((sum, item) => sum + item.quantity, 0);
-  const activeAlertCount = priceAlerts.filter((a) => a.isActive && !a.isTriggered && !a.targetReached).length;
+  const totalCartCount = cartData.items
+    ? cartData.items.reduce((sum, item) => sum + item.quantity, 0)
+    : 0;
+
+  const totalWishlistCount = wishlistIds.length;
+  const totalPriceAlertCount = priceAlerts.filter((a) => a.isActive).length;
 
   return (
-    <div className="min-h-screen bg-[#FAF8F4] text-[#222222] font-sans antialiased flex flex-col relative">
+    <div className="min-h-screen flex flex-col bg-[#FAF8F4] text-[#222222] font-sans antialiased selection:bg-[#D86F5C]/20 selection:text-[#222222]">
+      {/* Global Sticky Navbar */}
       <Navbar
         compareCount={compareIds.length}
         cartCount={totalCartCount}
-        wishlistCount={wishlistIds.length}
-        priceAlertCount={activeAlertCount}
+        wishlistCount={totalWishlistCount}
+        priceAlertCount={totalPriceAlertCount}
         orderCount={orders.length}
         currentUser={currentUser}
       />
 
-      {/* Floating Toast Notification */}
+      {/* Global Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#222222] text-white px-4 py-2.5 rounded-full text-xs sm:text-sm font-medium shadow-lg transition-all transform duration-200 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#D86F5C]" />
-          <span>{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
+          <div className="bg-[#222222] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium border border-white/10">
+            <span className="w-2 h-2 rounded-full bg-[#D86F5C]" />
+            <span>{toastMessage}</span>
+          </div>
         </div>
       )}
 
+      {/* Main Dynamic View Content */}
       <main className="flex-1">
         {routeInfo.name === 'product-details' ? (
           <ProductDetails
@@ -536,6 +554,30 @@ function App() {
             wishlistIds={wishlistIds}
             onToggleWishlist={handleToggleWishlist}
           />
+        ) : routeInfo.name === 'admin' || routeInfo.name === 'admin-orders' ? (
+          currentUser && currentUser.role === 'admin' ? (
+            <AdminDashboard
+              currentUser={currentUser}
+              onShowToast={setToastMessage}
+              defaultTab={routeInfo.name === 'admin-orders' ? 'orders' : 'products'}
+            />
+          ) : !currentUser ? (
+            <div className="bg-[#FAF8F4] py-20 min-h-[60vh] flex items-center justify-center text-center">
+              <div className="max-w-md mx-auto px-6">
+                <h1 className="text-2xl font-semibold text-[#222222]">Admin Sign In Required</h1>
+                <p className="text-sm text-[#6B6B6B] mt-2">Please sign in with an administrator account to access this area.</p>
+                <a href="#auth" className="mt-6 inline-flex px-6 py-2.5 rounded-full bg-[#222222] text-white text-sm font-medium shadow-xs">Sign in</a>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-[#FAF8F4] py-20 min-h-[60vh] flex items-center justify-center text-center">
+              <div className="max-w-md mx-auto px-6">
+                <h1 className="text-2xl font-semibold text-[#222222]">Access Denied</h1>
+                <p className="text-sm text-[#6B6B6B] mt-2">You do not have permission to access the admin order and product management dashboard.</p>
+                <a href="#products" className="mt-6 inline-flex px-6 py-2.5 rounded-full bg-[#222222] text-white text-sm font-medium shadow-xs">Explore Products</a>
+              </div>
+            </div>
+          )
         ) : routeInfo.name === 'auth' ? (
           currentUser ? (
             <Account
@@ -577,6 +619,7 @@ function App() {
           <OrderSuccess lastOrder={lastOrder} />
         ) : routeInfo.name === 'wishlist' ? (
           <Wishlist
+            currentUser={currentUser}
             wishlistIds={wishlistIds}
             onToggleWishlist={handleToggleWishlist}
           />

@@ -61,14 +61,6 @@ export async function getCategories(req, res) {
 /**
  * GET /api/products
  * Retrieve products with filtering, search, and sorting
- * Query params:
- *   - search / q: search term matching name or description
- *   - category: category name or slug (or 'All Categories')
- *   - minPrice: minimum price filter
- *   - maxPrice: maximum price filter
- *   - minRating / rating: minimum rating filter
- *   - sortBy / sort: 'price_asc' | 'price_desc' | 'rating_desc' | 'recommended'
- *   - ids: comma-separated product IDs (e.g. '1,2,5')
  */
 export async function getProducts(req, res) {
   try {
@@ -92,7 +84,7 @@ export async function getProducts(req, res) {
     const whereClauses = ['p.is_active = TRUE'];
     const params = [];
 
-    // Filter by specific IDs if provided (e.g., for compare/wishlist lookup)
+    // Filter by specific IDs if provided
     if (ids) {
       const idList = ids
         .split(',')
@@ -177,19 +169,23 @@ export async function getProducts(req, res) {
     const [rows] = await pool.query(query, params);
 
     // Format products to match frontend expectations exactly
-    const products = rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      category: row.category,
-      categorySlug: row.category_slug,
-      description: row.description,
-      price: Number(row.price),
-      rating: Number(row.rating),
-      stock: Number(row.stock),
-      image: row.image,
-      specifications: parseSpecs(row.specifications),
-      priceStatus: computePriceStatus(Number(row.price), Number(row.avg_price)),
-    }));
+    const products = rows.map((row) => {
+      const stock = Number(row.stock);
+      return {
+        id: row.id,
+        name: row.name,
+        category: row.category,
+        categorySlug: row.category_slug,
+        description: row.description,
+        price: Number(row.price),
+        rating: Number(row.rating),
+        stock,
+        inStock: stock > 0,
+        image: row.image,
+        specifications: parseSpecs(row.specifications),
+        priceStatus: computePriceStatus(Number(row.price), Number(row.avg_price)),
+      };
+    });
 
     return res.status(200).json({
       success: true,
@@ -255,6 +251,7 @@ export async function getProductById(req, res) {
     }
 
     const row = productRows[0];
+    const stock = Number(row.stock);
 
     // Fetch historical price timeline for this product
     const [historyRows] = await pool.query(
@@ -286,7 +283,8 @@ export async function getProductById(req, res) {
       description: row.description,
       price: Number(row.price),
       rating: Number(row.rating),
-      stock: Number(row.stock),
+      stock,
+      inStock: stock > 0,
       image: row.image,
       specifications: parseSpecs(row.specifications),
       priceStatus,

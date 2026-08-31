@@ -10,6 +10,7 @@ import userRoutes from './routes/userRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import priceAlertRoutes from './routes/priceAlertRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import { initPriceAlertJob } from './jobs/priceAlertJob.js';
 
 const app = express();
@@ -38,6 +39,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api', productRoutes);
 app.use('/api', reviewRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/cart', cartRoutes);
@@ -56,9 +58,11 @@ app.use((req, res) => {
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
-  res.status(500).json({
+  const isProd = process.env.NODE_ENV === 'production';
+  const statusCode = err.status || 500;
+  res.status(statusCode).json({
     success: false,
-    message: 'Internal server error',
+    message: isProd && statusCode === 500 ? 'Internal server error' : (err.message || 'Internal server error'),
   });
 });
 

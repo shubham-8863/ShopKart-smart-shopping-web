@@ -74,7 +74,7 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }) {
         });
 
         if (onAuthSuccess) {
-          onAuthSuccess(data);
+          onAuthSuccess(data.user, data.token);
         }
       } else {
         const data = await registerUser({
@@ -85,7 +85,7 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }) {
         });
 
         if (onAuthSuccess) {
-          onAuthSuccess(data);
+          onAuthSuccess(data.user, data.token);
         }
       }
     } catch (err) {

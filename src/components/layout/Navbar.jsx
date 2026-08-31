@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, ShoppingBag, User, Search, Menu, Package, LogIn } from 'lucide-react';
+import { Heart, ShoppingBag, User, Search, Menu, LogIn, LayoutDashboard } from 'lucide-react';
 
 export default function Navbar({
   compareCount = 0,
@@ -12,6 +12,8 @@ export default function Navbar({
   const userFirstName = currentUser?.fullName
     ? currentUser.fullName.split(' ')[0]
     : null;
+
+  const isAdmin = currentUser?.role === 'admin';
 
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F4]/85 backdrop-blur-md transition-colors border-b border-black/[0.04]">
@@ -62,6 +64,15 @@ export default function Navbar({
               </span>
             )}
           </a>
+          {isAdmin && (
+            <a
+              href="#admin"
+              className="text-[15px] font-semibold text-[#D86F5C] hover:text-[#222222] transition-colors duration-150 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D86F5C]/10 border border-[#D86F5C]/20"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Admin</span>
+            </a>
+          )}
         </div>
 
         {/* Right-Side Actions */}

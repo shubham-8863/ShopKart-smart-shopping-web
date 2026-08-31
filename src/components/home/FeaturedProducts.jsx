@@ -1,11 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import ProductCard from '../product/ProductCard';
 import products from '../../data/products';
+import { getProducts } from '../../services/api';
 
 export default function FeaturedProducts({ wishlistIds = [], onToggleWishlist }) {
-  // Slices first 4 curated items (ready for future GET /api/products/featured endpoint)
-  const featuredProducts = products.slice(0, 4);
+  const [featuredProducts, setFeaturedProducts] = useState(products.slice(0, 4));
+
+  useEffect(() => {
+    let isMounted = true;
+    getProducts()
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setFeaturedProducts(data.slice(0, 4));
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch featured products:', err.message);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <section className="bg-[#FAF8F4] py-20 sm:py-24 lg:py-28 border-t border-black/[0.04]">

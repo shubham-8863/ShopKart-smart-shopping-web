@@ -339,6 +339,7 @@ export default function ProductDetails({
   const displayRating = product.rating !== null && product.rating !== undefined && product.rating > 0
     ? Number(product.rating).toFixed(1)
     : null;
+  const isProductInStock = typeof product.stock === 'number' ? product.stock > 0 : Boolean(product.inStock);
 
   return (
     <div className="bg-[#FAF8F4] py-8 sm:py-12">
@@ -386,7 +387,7 @@ export default function ProductDetails({
                 {product.name}
               </h1>
 
-              {/* Rating */}
+              {/* Rating & Stock row */}
               <div className="flex items-center gap-3 mt-3">
                 {displayRating ? (
                   <div className="flex items-center gap-1.5 text-amber-500">
@@ -407,7 +408,7 @@ export default function ProductDetails({
                 )}
                 <span className="text-xs text-[#6B6B6B]">•</span>
                 <span className="text-xs text-[#6B6B6B]">
-                  {product.inStock ? (
+                  {isProductInStock ? (
                     <span className="text-emerald-700 font-medium">In Stock ({product.stock} available)</span>
                   ) : (
                     <span className="text-rose-600 font-medium">Out of Stock</span>
@@ -438,7 +439,7 @@ export default function ProductDetails({
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={isAddingToCart || !product.inStock}
+                disabled={isAddingToCart || !isProductInStock}
                 className={`w-full py-4 px-8 rounded-full font-medium text-base flex items-center justify-center gap-2 shadow-xs transition duration-200 active:scale-[0.98] ${
                   isAddedToCart
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
@@ -455,7 +456,7 @@ export default function ProductDetails({
                 ) : (
                   <>
                     <ShoppingBag className="w-5 h-5" />
-                    <span>{product.inStock ? 'Add to Cart' : 'Out of Stock'}</span>
+                    <span>{isProductInStock ? 'Add to Cart' : 'Out of Stock'}</span>
                   </>
                 )}
               </button>
