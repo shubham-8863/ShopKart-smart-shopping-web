@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 import Hero from './components/home/Hero';
 import CategorySection from './components/home/CategorySection';
 import FeaturedProducts from './components/home/FeaturedProducts';
@@ -668,6 +669,9 @@ function App() {
           </>
         )}
       </main>
+
+      {/* Customer-Facing Footer */}
+      {routeInfo.name !== 'admin' && routeInfo.name !== 'admin-orders' && <Footer />}
     </div>
   );
 }
