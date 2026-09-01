@@ -25,7 +25,7 @@ export default function Footer() {
             </p>
 
             <p className="text-xs sm:text-sm text-[#6B6B6B] leading-relaxed max-w-sm">
-              A full-stack e-commerce project featuring dynamic catalog discovery, server-authoritative checkout, automated price alerts, and verified customer ratings.
+                  Unapologetic style for the bold and the brave.
             </p>
           </div>
 
@@ -109,11 +109,11 @@ export default function Footer() {
               About
             </h3>
             <p className="text-xs sm:text-sm text-[#6B6B6B] leading-relaxed">
-              Built with React, Express & MySQL.
+                get your favourites delivered to your Door
             </p>
             <div className="pt-1">
               <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#FAF8F4] border border-black/5 text-[11px] font-medium text-[#6B6B6B] tracking-wide">
-                React · Express · MySQL
+                Order · Recieve · Pay on Delivery
               </span>
             </div>
           </div>
