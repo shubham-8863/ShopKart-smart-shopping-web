@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Create MySQL connection pool using promises
-const pool = mysql.createPool({
+const poolConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
@@ -14,7 +14,16 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-});
+};
+
+if (process.env.DB_CA_CERT) {
+  poolConfig.ssl = {
+    ca: process.env.DB_CA_CERT,
+    rejectUnauthorized: true,
+  };
+}
+
+const pool = mysql.createPool(poolConfig);
 
 // Helper function to test database connectivity
 export async function testConnection() {
